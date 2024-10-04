@@ -1,3 +1,6 @@
+mod ready;
+
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -5,17 +8,19 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 
-use futures::stream::FuturesUnordered;
-use futures::{FutureExt, StreamExt};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use futures::FutureExt;
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::process::Command;
 
-use protocol::{V1SetupMsg, V1WaitCondition, V1Event};
-use protocol::{V1_ENV_SETUP, DEFAULT_LISTEN_ADDR};
+use disposables_protocol::{V1SetupMsg, V1WaitCondition, V1Event};
+use disposables_protocol::V1_ENV_SETUP;
 use tokio::sync::mpsc::{Receiver, Sender};
 
+use ready::ReadySignal;
+
 struct MySetupMsg {
+    port: u16,
     wait_for: Vec<V1WaitCondition>,
     ready_timeout_s: u64,
     port_check_interval_ms: u64,
@@ -25,6 +30,7 @@ struct MySetupMsg {
 impl MySetupMsg {
     fn fetch() -> Self {
         let mut res = Self {
+            port: 4,
             wait_for: Vec::new(),
             ready_timeout_s: 120,
             port_check_interval_ms: 500,
@@ -36,6 +42,7 @@ impl MySetupMsg {
                 .unwrap_or_else(|e| {
                     panic!("Unable to parse {} variable: {e}", V1_ENV_SETUP)
                 });
+            res.port = msg.port;
             res.wait_for = msg.wait_for;
             if let Some(v) = msg.ready_timeout_s {
                 res.ready_timeout_s = v;
@@ -53,7 +60,7 @@ struct Context {
     args: Vec<OsString>,
 }
 
-async fn read_line(kind: &str, stream: &mut (impl AsyncBufRead + Unpin)) 
+async fn read_line(stream: &mut (impl AsyncBufRead + Unpin)) 
 -> Option<String> {
     let mut line = String::new();
     let res = stream.read_line(&mut line).await
@@ -62,12 +69,12 @@ async fn read_line(kind: &str, stream: &mut (impl AsyncBufRead + Unpin))
         None
     } else {
         let line = line.trim_end().to_owned();
-        println!("[{kind}] {line}");
         Some(line)
     }
 }
 
-async fn scan_output(ctx: &Context, stream: &mut (impl AsyncBufRead + Unpin)) {
+async fn scan_output(ctx: &Context, stream: &mut (impl AsyncBufRead + Unpin),
+    ready_signal: &ReadySignal) {
     let mut patterns = Vec::new();
     for condition in &ctx.setup.wait_for {
         if let V1WaitCondition::Stdout(pattern) = condition {
@@ -75,18 +82,24 @@ async fn scan_output(ctx: &Context, stream: &mut (impl AsyncBufRead + Unpin)) {
         }
     }
 
-    while let Some(line) = read_line("out", stream).await {
-        for &pattern in &patterns {
-            if line.contains(pattern) {
-                return;
-            }
+    while !patterns.is_empty() {
+        if let Some(line) = read_line(stream).await {
+            let rm_list = patterns.iter()
+                .filter_map(|p| line.contains(*p).then_some(*p))
+                .collect::<HashSet<&String>>();
+
+            let prev_len = patterns.len();
+            patterns.retain(|p| !rm_list.contains(p));
+            ready_signal.dec((prev_len - patterns.len()) as i32).await;
+        } else {
+            break;
         }
     }
 }
 
-async fn check_ports(ctx: &Context) {
+async fn check_ports(ctx: &Context, ready_signal: &ReadySignal) {
     let interval = Duration::from_millis(ctx.setup.port_check_interval_ms);
-    let mut futures = FuturesUnordered::new();
+    let mut futures = Vec::new();
 
     for condition in &ctx.setup.wait_for {
         if let V1WaitCondition::Port(port) = condition {
@@ -94,7 +107,6 @@ async fn check_ports(ctx: &Context) {
             let addrs = [(IpAddr::from(Ipv4Addr::LOCALHOST), port),
                 (IpAddr::from(Ipv6Addr::LOCALHOST), port)];
             for addr in addrs {
-
                 let fut = async move {
                     loop {
                         let result = TcpStream::connect(addr).await;
@@ -103,15 +115,14 @@ async fn check_ports(ctx: &Context) {
                         }
                         tokio::time::sleep(interval).await;
                     }
+                    ready_signal.dec(1).await;
                 };
                 futures.push(fut);
             }
         }
     }
 
-    if futures.next().await.is_none() {
-        std::future::pending::<()>().await;
-    }
+    futures::future::join_all(futures).await;
 }
 
 async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
@@ -124,11 +135,6 @@ async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
             .spawn()
             .map_err(|e| V1Event::FailedToStartEntrypoint(e.to_string()))?;
 
-        //Wait for readiness
-        let timeout_duration = Duration::from_secs(ctx.setup.ready_timeout_s);
-        let mut timeout = std::pin::pin!(tokio::time::sleep(timeout_duration)
-            .fuse());
-
         let stdout = child.stdout.take()
             .expect("stdout of child process is None");
         let mut stdout = BufReader::new(stdout);
@@ -137,34 +143,47 @@ async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
             .expect("stderr of child process is None");
         let mut stderr = BufReader::new(stderr);
 
+        let ready_signal = ReadySignal::new(ctx.setup.wait_for.len() as i32, 
+            sender.clone());
+
         futures::select!{
-            _ = scan_output(ctx, &mut stdout).fuse() => Ok(()),
-            _ = check_ports(ctx).fuse() => Ok(()),
-            maybe_wait_res = child.wait().fuse() => {
-                let wait_res = maybe_wait_res.expect("Failed to wait for child");
-                Err(V1Event::Exited(wait_res.code()))
-            },
-            _ = timeout => Err(V1Event::FailedTimeout),
+            //Wait till child exits
             _ = async {
-                while read_line("err", &mut stderr).await.is_some() { }
+                let wait_res = child.wait().await
+                    .expect("Failed to wait for child");
+                sender.send(V1Event::Exited(wait_res.code())).await
+                    .expect("Cannot send event");
+            }.fuse() => (),
+            _ = async {
+                futures::join!{
+                    //Check stdout for readiness (and copy)
+                    async {
+                        scan_output(ctx, &mut stdout, &ready_signal).await;
+                        while let Some(line) = read_line(&mut stdout).await {
+                            sender.send(V1Event::Stdout(line)).await
+                                .expect("Cannot send event");
+                        }
+                    },
+                    //Copy stderr
+                    async {
+                        while let Some(line) = read_line(&mut stderr).await {
+                            sender.send(V1Event::Stderr(line)).await
+                                .expect("Cannot send event");
+                        }
+                    },
+                    //Check ports for readiness
+                    check_ports(ctx, &ready_signal),
+                    //Run the timeout
+                    async {
+                        let dur = Duration::from_secs(ctx.setup.ready_timeout_s);
+                        tokio::time::sleep(dur).await;
+
+                        ready_signal.timeout().await;
+                    },
+                };
                 futures::future::pending::<()>().await;
-            }.fuse() => panic!("Unreachable code"),
-        }?;
-
-        sender.send(V1Event::Ready).await.expect("Cannot send event");
-
-        futures::join!{
-            async {
-                while read_line("out", &mut stdout).await.is_some() { }
-            },
-            async {
-                while read_line("err", &mut stderr).await.is_some() { }
-            },
+            }.fuse() => (),
         };
-
-        let wait_res = child.wait().await.expect("Unable to wait for child");
-        sender.send(V1Event::Exited(wait_res.code())).await
-            .expect("Cannot send event");
 
         Ok(())
     }.await;
@@ -176,12 +195,13 @@ async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
 
 async fn handle_client(ctx: &Context, mut receiver: Receiver<V1Event>) {
     //Create TCP listener
-    let listener = TcpListener::bind(DEFAULT_LISTEN_ADDR).await
+    let listen_addr = format!("[::]:{}", ctx.setup.port);
+    let listener = TcpListener::bind(&listen_addr).await
         .unwrap_or_else(|e| panic!("Unable to listen on {}: {}",
-                DEFAULT_LISTEN_ADDR, e));
+                listen_addr, e));
 
     //Accept one connection with timeout.
-    let mut stream = futures::select! {
+    let stream = futures::select! {
         res = listener.accept().fuse() => {
             res.expect("Unable to accept connection").0  
         }, 
@@ -191,14 +211,24 @@ async fn handle_client(ctx: &Context, mut receiver: Receiver<V1Event>) {
         }
     };
 
-    while let Some(event) = receiver.recv().await {
-        let serialized = serde_json::to_vec(&event)
-            .expect("Cannot serialize event");
-        async {
-            stream.write_u32(serialized.len() as u32).await?;
-            stream.write_all(&serialized).await
-        }.await.expect("Cannot send event to client");
-    }
+    let (mut input, mut output) = tokio::io::split(stream);
+
+    futures::select!{
+        _ = async {
+            while let Some(event) = receiver.recv().await {
+                let serialized = serde_json::to_vec(&event)
+                    .expect("Cannot serialize event");
+                async {
+                    output.write_u32(serialized.len() as u32).await?;
+                    output.write_all(&serialized).await
+                }.await.expect("Cannot send event to client");
+            }
+        }.fuse() => (),
+        _ = async {
+            //TODO: Temp code to respond to closing connection
+            let _ = input.read_u8().await;
+        }.fuse() => (),
+    };
 }
 
 async fn async_main() {
@@ -233,9 +263,12 @@ async fn async_main() {
 
         let (sender, receiver) = tokio::sync::mpsc::channel::<V1Event>(1);
 
-        futures::join!{
-            run_entrypoint(&ctx, sender),
-            handle_client(&ctx, receiver)
+        futures::select!{
+            _ = async {
+                run_entrypoint(&ctx, sender).await;
+                std::future::pending::<()>().await
+            }.fuse() => (),
+            _ = handle_client(&ctx, receiver).fuse() => ()
         };
 
     } else {

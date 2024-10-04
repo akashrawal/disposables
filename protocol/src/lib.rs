@@ -1,24 +1,27 @@
 //Protocol related definitions
 
-pub const V1_ENV_SETUP: &str = "DISPOSABLES_SETUP_V1";
-pub const DEFAULT_LISTEN_ADDR: &str = "[::]:4";
+pub const V1_ENV_SETUP: &str = "DISPOSABLES_V1_SETUP";
+pub const DLC_MOUNT_POINT: &str = "/dlc";
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum V1WaitCondition {
     Port(u16),
     Stdout(String),
 }
 
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct V1SetupMsg {
+    pub port: u16,
     pub wait_for: Vec<V1WaitCondition>,
     pub ready_timeout_s: Option<u64>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum V1Event {
     Ready,
+    Stdout(String),
+    Stderr(String),
     Exited(Option<i32>),
     FailedToStartEntrypoint(String),
     FailedTimeout,

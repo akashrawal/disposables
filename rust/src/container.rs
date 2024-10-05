@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 use std::net::TcpStream;
+use std::process::{Child, ChildStdout, Command, Stdio};
 
 use disposables_protocol::{DLC_MOUNT_POINT, V1_ENV_SETUP, V1Event, V1SetupMsg, V1WaitCondition};
 
@@ -79,7 +80,8 @@ impl ContainerParams {
  */
 
 pub struct Container {
-    name: String, 
+    ctx: Context,
+    id: String, 
     port_map: HashMap<u16, String>,
     dlc_conn: TcpStream,
 }
@@ -184,13 +186,13 @@ impl ContainerParams {
         }
         args.add(self.image.clone()).extend(img_cmd);
         
-        let name = ctx.podman(args)
+        let id = ctx.podman(args)
             .map_err(Error::CannotStartContainer)?;
 
         //Create port map
         let mut port_map = HashMap::<u16, String>::new();
         for p in ports {
-            let res = ctx.podman(Args::from(["port", &name, &format!("{p}")]))
+            let res = ctx.podman(Args::from(["port", &id, &format!("{p}")]))
                 .map_err(|e| Error::CannotFindMappedPort(p, e))?;
             port_map.insert(p, res);
         }
@@ -204,7 +206,8 @@ impl ContainerParams {
 
         
         Ok(Container {
-            name,
+            ctx: ctx.clone(),
+            id,
             port_map,
             dlc_conn
         })
@@ -212,23 +215,29 @@ impl ContainerParams {
 }
 
 impl Container {
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
-    //TODO: Maybe we should separate lifecycle events from non-lifecycle ones
     pub fn wait(&mut self) -> Result<V1Event, Error> {
-        loop {
-            match read_pdu(&mut self.dlc_conn).map_err(Error::CannotReadPDU)? {
-                V1Event::Stdout(line) => log::info!("[out] {line}"),
-                V1Event::Stderr(line) => log::info!("[err] {line}"),
-                e => return Ok(e),
-            }
-        }
+        read_pdu(&mut self.dlc_conn).map_err(Error::CannotReadPDU)
     }
 
     pub fn port(&self, port: u16) -> Option<&str> {
         self.port_map.get(&port).map(String::as_str)
+    }
+
+    pub fn logs(&self) -> Result<String, ExecError> {
+        self.ctx.podman(Args::from(["logs", &self.id])) 
+    }
+    
+    pub fn logs_stream(&self) -> Result<(ChildStdout, Child), std::io::Error> {
+        let mut child = Command::new(self.ctx.engine())
+            .args(["logs", "-f", &self.id])
+            .stdout(Stdio::piped())
+            .spawn()?;
+        let stdout = child.stdout.take().expect("stdout is none");
+        Ok((stdout, child))
     }
 }
 

@@ -60,7 +60,7 @@ struct Context {
     args: Vec<OsString>,
 }
 
-async fn read_line(stream: &mut (impl AsyncBufRead + Unpin)) 
+async fn read_line(kind: &str, stream: &mut (impl AsyncBufRead + Unpin)) 
 -> Option<String> {
     let mut line = String::new();
     let res = stream.read_line(&mut line).await
@@ -69,11 +69,12 @@ async fn read_line(stream: &mut (impl AsyncBufRead + Unpin))
         None
     } else {
         let line = line.trim_end().to_owned();
+        println!("[{kind}] {line}");
         Some(line)
     }
 }
 
-async fn scan_output(ctx: &Context, stream: &mut (impl AsyncBufRead + Unpin),
+async fn scan_output(ctx: &Context, kind: &str, stream: &mut (impl AsyncBufRead + Unpin),
     ready_signal: &ReadySignal) {
     let mut patterns = Vec::new();
     for condition in &ctx.setup.wait_for {
@@ -83,7 +84,7 @@ async fn scan_output(ctx: &Context, stream: &mut (impl AsyncBufRead + Unpin),
     }
 
     while !patterns.is_empty() {
-        if let Some(line) = read_line(stream).await {
+        if let Some(line) = read_line(kind, stream).await {
             let rm_list = patterns.iter()
                 .filter_map(|p| line.contains(*p).then_some(*p))
                 .collect::<HashSet<&String>>();
@@ -158,18 +159,12 @@ async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
                 futures::join!{
                     //Check stdout for readiness (and copy)
                     async {
-                        scan_output(ctx, &mut stdout, &ready_signal).await;
-                        while let Some(line) = read_line(&mut stdout).await {
-                            sender.send(V1Event::Stdout(line)).await
-                                .expect("Cannot send event");
-                        }
+                        scan_output(ctx, "out", &mut stdout, &ready_signal).await;
+                        while read_line("out", &mut stdout).await.is_some() { }
                     },
                     //Copy stderr
                     async {
-                        while let Some(line) = read_line(&mut stderr).await {
-                            sender.send(V1Event::Stderr(line)).await
-                                .expect("Cannot send event");
-                        }
+                        while read_line("err", &mut stderr).await.is_some() { }
                     },
                     //Check ports for readiness
                     check_ports(ctx, &ready_signal),

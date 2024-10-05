@@ -6,7 +6,7 @@ use disposables_protocol::DLC_MOUNT_POINT;
 
 use crate::args::Args;
 
-
+#[derive(Clone)]
 pub struct Context {
     engine: String,
     image: String,

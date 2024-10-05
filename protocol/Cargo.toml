@@ -2,6 +2,13 @@
 name = "disposables_protocol"
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0"
+description = '''
+Protocol definitions for Disposables library to communicate with DLC container.
+'''
+homepage = "TODO"
+repository = "TODO"
+readme = "README.md"
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}

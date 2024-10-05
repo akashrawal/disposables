@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use protocol::V1Event;
+use disposables_protocol::V1Event;
 use tokio::sync::mpsc::Sender;
 
 pub struct ReadySignal {

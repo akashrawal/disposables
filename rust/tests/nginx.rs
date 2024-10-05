@@ -29,6 +29,10 @@ fn normal_server() {
     let response = String::from_utf8(response_buf).unwrap();
     assert_eq!(response.split("\r\n").next().unwrap(), "HTTP/1.1 200 OK",
         "Unexpected response: {response}");
+    log::info!("logs: {}", container.logs().unwrap());
 }
 
+
+//TODO: Reading and writing files
+//TODO: Delayed startup
 

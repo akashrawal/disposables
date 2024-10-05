@@ -20,8 +20,6 @@ pub struct V1SetupMsg {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum V1Event {
     Ready,
-    Stdout(String),
-    Stderr(String),
     Exited(Option<i32>),
     FailedToStartEntrypoint(String),
     FailedTimeout,

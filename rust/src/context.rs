@@ -87,7 +87,7 @@ impl Context {
                 .map_err(Error::CreateVolume)?;
         }
         let install_dir = ctx.dlc_install_dir();
-        let volume_spec = format!("{}:/{DLC_MOUNT_POINT}", &ctx.volume);
+        let volume_spec = format!("{}:{DLC_MOUNT_POINT}", &ctx.volume);
         ctx.podman(Args::from(["run", "-i", "--rm", "-v", &volume_spec,
             &ctx.image, "install", &install_dir])).map_err(Error::CreateVolume)?;
 

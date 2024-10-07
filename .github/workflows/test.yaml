@@ -25,6 +25,9 @@ jobs:
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: cargo test -p disposables
+      - run: cargo test -p disposables
+        env: 
+          DISPOSABLES_ENGINE: docker
   deploy_dlc:
     needs: [build_dlc, rust]
     if: "github.ref == 'refs/heads/master'"

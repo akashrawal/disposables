@@ -37,9 +37,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image
-      - run: buildah login -u akashrawal --password-stdin docker.io <<< "$TOKEN"
+      - run: buildah login -u akashrawal --password-stdin docker.io <<< "$STDIN"
         env: 
-          TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          STDIN: ${{ secrets.ACCESS_TOKEN }}
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: buildah push dlc docker.io/akashrawal/disposables-dlc

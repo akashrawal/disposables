@@ -1,0 +1,42 @@
+#Build
+name: Test
+on: [push, pull_request]
+env: 
+  DISPOSABLES_DLC_IMAGE: dlc
+jobs:
+  build_dlc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: buildah build -t dlc .
+      - run: buildah push dlc oci-archive:dlc.tar:dlc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dlc-image
+          path: dlc.tar
+  rust:
+    needs: [build_dlc]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - run: cargo test -p disposables
+  deploy_dlc:
+    needs: [build_dlc, rust]
+    if: "github.ref == 'refs/heads/master'"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah login -u akashrawal --password-stdin docker.io <<< "$TOKEN"
+        env: 
+          TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - run: buildah push dlc docker.io/akashrawal/disposables-dlc

@@ -25,7 +25,7 @@ jobs:
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: cargo test -p disposables
-      - run: docker import dlc.tar
+      - run: docker load dlc.tar
       - run: docker image ls
       - run: cargo test -p disposables
         env: 

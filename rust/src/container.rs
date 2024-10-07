@@ -86,6 +86,18 @@ pub struct Container {
     dlc_conn: TcpStream,
 }
 
+fn try_connect(addrs: &str) -> Result<TcpStream, std::io::Error> {
+    let mut res = Err(std::io::Error::new(std::io::ErrorKind::NotFound, 
+            "No address available"));
+    for addr in addrs.split_whitespace() {
+        res = TcpStream::connect(addr);
+        if res.is_ok() {
+            return res;
+        }
+    }
+    res
+}
+
 #[derive(Debug)]
 pub enum ReadError {
     System(std::io::Error),
@@ -111,6 +123,7 @@ pub enum Error {
     CannotParseImageMetadata(serde_json::Error),
     CannotStartContainer(ExecError),
     CannotFindMappedPort(u16, ExecError),
+    CannotParseMappedPort(String),
     CannotConnectToDlc(String, std::io::Error),
     CannotReadPDU(ReadError),
 }
@@ -158,12 +171,6 @@ impl ContainerParams {
             .unwrap_or(image_meta.config.cmd.as_slice());
 
         let dlc_path = format!("{}/dlc", ctx.dlc_install_dir());
-        let mut entrypoint = vec![&dlc_path, "run"];
-        for x in img_entrypoint {
-            entrypoint.push(x);
-        }
-        let entrypoint_json = serde_json::to_string(&entrypoint)
-            .expect("Error serializing entrypoint");
 
         //Setup message
         let setup_msg = serde_json::to_string(&self.setup_msg)
@@ -176,7 +183,6 @@ impl ContainerParams {
         //Start container
         let mut args = Args::from(["run", "-d", "--rm",
             "-v", &format!("{}:{DLC_MOUNT_POINT}", ctx.volume()),
-            &format!("--entrypoint={entrypoint_json}"), 
             "-e", &format!("{V1_ENV_SETUP}={setup_msg}")]);
         for (key, value) in &self.env {
             args.add("-e").add(format!("{key}={value}"));
@@ -184,7 +190,11 @@ impl ContainerParams {
         for p in &ports {
             args.add("-p").add(p.to_string());
         }
-        args.add(self.image.clone()).extend(img_cmd);
+        args.add(format!("--entrypoint={dlc_path}"))
+            .add(self.image.clone())
+            .add("run")
+            .extend(img_entrypoint)
+            .extend(img_cmd);
         
         let id = ctx.podman(args)
             .map_err(Error::CannotStartContainer)?;
@@ -192,16 +202,16 @@ impl ContainerParams {
         //Create port map
         let mut port_map = HashMap::<u16, String>::new();
         for p in ports {
-            let res = ctx.podman(["port", &id, &format!("{p}")])
+            let output = ctx.podman(["port", &id, &format!("{p}")])
                 .map_err(|e| Error::CannotFindMappedPort(p, e))?;
-            port_map.insert(p, res);
+            port_map.insert(p, output);
         }
 
         //Connect to DLC port
         let addr_string = port_map.get(&DLC_PORT)
             .expect("DLC port does not exist");
         
-        let dlc_conn = TcpStream::connect(addr_string)
+        let dlc_conn = try_connect(addr_string)
             .map_err(|e| Error::CannotConnectToDlc(addr_string.clone(), e))?;
 
         
@@ -223,8 +233,12 @@ impl Container {
         read_pdu(&mut self.dlc_conn).map_err(Error::CannotReadPDU)
     }
 
-    pub fn port(&self, port: u16) -> Option<&str> {
-        self.port_map.get(&port).map(String::as_str)
+    pub fn port(&self, port: u16) -> Option<Vec<&str>> {
+        self.port_map.get(&port).map(|x| x.split_whitespace().collect())
+    }
+
+    pub fn connect_port(&self, port: u16) -> Result<TcpStream, std::io::Error> {
+        try_connect(self.port_map.get(&port).map(String::as_str).unwrap_or(""))
     }
 
     pub fn logs(&self) -> Result<String, ExecError> {

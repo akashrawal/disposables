@@ -1,8 +1,6 @@
 
 use std::io::{Read, Write};
 
-use std::net::TcpStream;
-
 use disposables::context::Context;
 use disposables::container::ContainerParams;
 use disposables_protocol::{V1Event, V1WaitCondition};
@@ -20,8 +18,7 @@ fn normal_server() {
 
     assert!(matches!(container.wait(), Ok(V1Event::Ready)));
 
-    let addr = container.port(80).unwrap();
-    let mut conn = TcpStream::connect(addr).unwrap();
+    let mut conn = container.connect_port(80).unwrap();
     write!(conn, "GET / HTTP/1.0\nHost: localhost\n\n").unwrap();
 
     let mut response_buf = Vec::<u8>::new();

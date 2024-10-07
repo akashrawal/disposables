@@ -5,10 +5,10 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::process::{Child, ChildStdout, Command, Stdio};
 
-use disposables_protocol::{DLC_MOUNT_POINT, V1_ENV_SETUP, V1Event, V1SetupMsg, V1WaitCondition};
+use disposables_protocol::{V1_ENV_SETUP, V1Event, V1SetupMsg, V1WaitCondition};
 
 use crate::args::Args;
-use crate::context::{ExecError, Context};
+use crate::context::{DLC_MOUNT_POINT, ExecError, Context};
 
 const DLC_PORT: u16 = 4;
 
@@ -118,17 +118,17 @@ pub enum Error {
 impl ContainerParams {
     pub fn create(&self, ctx: &Context) -> Result<Container, Error> {
         //Find image entrypoint and command
-        let image_exists = match ctx.podman(Args::from(["image", "exists", &self.image])) {
+        let image_exists = match ctx.podman(["image", "exists", &self.image]) {
             Ok(_) => true, 
             Err(ExecError::ProgramReturnedUnsuccessfully{..}) => false,
             Err(e) => return Err(Error::CannotPullImage(e)),
         };
         if ! image_exists {
-            ctx.podman(Args::from(["image", "pull", &self.image]))
+            ctx.podman(["image", "pull", &self.image])
                 .map_err(Error::CannotPullImage)?;
         }
 
-        let image_meta_str = ctx.podman(Args::from(["image", "inspect", &self.image]))
+        let image_meta_str = ctx.podman(["image", "inspect", &self.image])
             .map_err(Error::CannotPullImage)?;
 
 
@@ -192,7 +192,7 @@ impl ContainerParams {
         //Create port map
         let mut port_map = HashMap::<u16, String>::new();
         for p in ports {
-            let res = ctx.podman(Args::from(["port", &id, &format!("{p}")]))
+            let res = ctx.podman(["port", &id, &format!("{p}")])
                 .map_err(|e| Error::CannotFindMappedPort(p, e))?;
             port_map.insert(p, res);
         }
@@ -228,7 +228,7 @@ impl Container {
     }
 
     pub fn logs(&self) -> Result<String, ExecError> {
-        self.ctx.podman(Args::from(["logs", &self.id])) 
+        self.ctx.podman(["logs", &self.id]) 
     }
     
     pub fn logs_stream(&self) -> Result<(ChildStdout, Child), std::io::Error> {

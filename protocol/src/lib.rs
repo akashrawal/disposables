@@ -1,7 +1,6 @@
 //Protocol related definitions
 
 pub const V1_ENV_SETUP: &str = "DISPOSABLES_V1_SETUP";
-pub const DLC_MOUNT_POINT: &str = "/dlc";
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum V1WaitCondition {

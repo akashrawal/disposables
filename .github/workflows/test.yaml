@@ -42,7 +42,7 @@ jobs:
           name: dlc-image
       - run: buildah login -u akashrawal --password-stdin docker.io <<< "$STDIN"
         env: 
-          STDIN: ${{ secrets.ACCESS_TOKEN }}
+          STDIN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: buildah push dlc docker.io/akashrawal/disposables-dlc

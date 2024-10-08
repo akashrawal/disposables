@@ -1,6 +1,6 @@
 [package]
 name = "disposables"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "GPL-3.0"
 description = '''
@@ -15,7 +15,7 @@ serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 thiserror = "1"
 
-disposables_protocol = {version = "0.1.0", path = "../protocol"}
+disposables_protocol = {version = "0", path = "../protocol"}
 
 [dev-dependencies]
 log = "0.4.22"

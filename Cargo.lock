@@ -122,7 +122,7 @@ checksum = "d3fd119d74b830634cea2a0f58bbd0d54540518a14397557951e79340abc28c0"
 
 [[package]]
 name = "disposables"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "disposables_protocol",
  "env_logger",
@@ -134,7 +134,7 @@ dependencies = [
 
 [[package]]
 name = "disposables_protocol"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",

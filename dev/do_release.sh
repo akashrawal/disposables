@@ -6,6 +6,13 @@ if test -z "$version"; then
 	exit 1
 fi
 
+#Check for uncommited changes
+if ! git diff --quiet; then
+	echo "There are uncommited changes in repository." >&2
+	git status
+	exit 1
+fi
+
 #Check version in each cargo.toml
 for file in protocol/Cargo.toml rust/Cargo.toml; do
 	file_version="`sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' "$file" | head -n 1`"

@@ -34,15 +34,21 @@ jobs:
   deploy_dlc:
     needs: [build_dlc, rust]
     if: "github.ref == 'refs/heads/master'"
+    env: 
+      REGISTRY: ${{ env.DLC_REGISTRY }}
+      IMAGE: ${{ env.DLC_IMAGE }}
+      TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image
-      - run: buildah login -u akashrawal --password-stdin docker.io <<< "$STDIN"
-        env: 
-          STDIN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+      - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
-      - run: buildah push dlc docker.io/akashrawal/disposables-dlc
+      - run: buildah push dlc $IMAGE
+      - run: sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' rust/Cargo.toml | head -n 1 > version.txt
+      - run: buildah push dlc $IMAGE:`cat version.txt`
+      - run: buildah push dlc $IMAGE:`cut -d '.' -f 1,2 version.txt`
+      - run: buildah push dlc $IMAGE:`cut -d '.' -f 1 version.txt`

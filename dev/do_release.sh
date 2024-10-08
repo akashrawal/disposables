@@ -2,8 +2,13 @@
 
 version="$1"
 if test -z "$version"; then
-	echo "Usage: $0 <version>" >&2
+	echo "Usage: $0 [check] <version>" >&2
 	exit 1
+fi
+
+if test "$1" == "check"; then
+	version="$2"
+	check=1
 fi
 
 #Check for uncommited changes
@@ -23,7 +28,11 @@ for file in protocol/Cargo.toml rust/Cargo.toml; do
 	fi
 done
 
-echo git tag -m "Release $version" "r${version}"
-git tag -m "Release $version" "r${version}"
+if test -n "$check"; then
+	echo "OK"
+else
+	echo git tag -m "Release $version" "r${version}"
+	git tag -m "Release $version" "r${version}"
+fi
 
 

@@ -35,8 +35,8 @@ jobs:
     needs: [build_dlc, rust]
     if: "github.ref == 'refs/heads/master'"
     env: 
-      REGISTRY: ${{ env.DLC_REGISTRY }}
-      IMAGE: ${{ env.DLC_IMAGE }}
+      REGISTRY: ${{ vars.DLC_REGISTRY }}
+      IMAGE: ${{ vars.DLC_IMAGE }}
       TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
     runs-on: ubuntu-latest
     steps:

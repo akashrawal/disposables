@@ -48,7 +48,23 @@ jobs:
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: buildah push dlc $IMAGE
-      - run: sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' dlc/Cargo.toml | head -n 1 > version.txt
-      - run: buildah push dlc $IMAGE:`cat version.txt`
-      - run: buildah push dlc $IMAGE:`cut -d '.' -f 1,2 version.txt`
-      - run: buildah push dlc $IMAGE:`cut -d '.' -f 1 version.txt`
+  deploy_dlc_tag:
+    needs: [build_dlc, rust]
+    if: ${{ ! startsWith(github.ref, 'refs/tags/r') }}
+    env: 
+      REGISTRY: ${{ vars.DLC_REGISTRY }}
+      IMAGE: ${{ vars.DLC_IMAGE }}
+      TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`
+      - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\..*\)\..*/\1/' <<< "$TAG"`
+      - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\)\..*\..*/\1/' <<< "$TAG"`

@@ -23,5 +23,7 @@ for file in protocol/Cargo.toml rust/Cargo.toml; do
 	fi
 done
 
+echo git tag -m "Release $version" "r${version}"
 git tag -m "Release $version" "r${version}"
+
 

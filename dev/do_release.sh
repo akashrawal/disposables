@@ -8,7 +8,7 @@ fi
 
 #Check version in each cargo.toml
 for file in protocol/Cargo.toml rust/Cargo.toml; do
-	file_version="`sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' "$file"`"
+	file_version="`sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' "$file" | head -n 1`"
 
 	if test "$file_version" != "$version"; then
 		echo "$file: Version mismatch: change $file_version -> $version" >&2

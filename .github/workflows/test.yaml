@@ -48,7 +48,7 @@ jobs:
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
       - run: buildah push dlc $IMAGE
-      - run: sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' rust/Cargo.toml | head -n 1 > version.txt
+      - run: sed -nr -e 's/.*version[ =]*"([^"]*)".*/\1/p' dlc/Cargo.toml | head -n 1 > version.txt
       - run: buildah push dlc $IMAGE:`cat version.txt`
       - run: buildah push dlc $IMAGE:`cut -d '.' -f 1,2 version.txt`
       - run: buildah push dlc $IMAGE:`cut -d '.' -f 1 version.txt`

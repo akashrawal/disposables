@@ -6,9 +6,9 @@ license = "GPL-3.0"
 description = '''
 Protocol definitions for Disposables library to communicate with DLC container.
 '''
-homepage = "TODO"
-repository = "TODO"
-readme = "README.md"
+homepage = "https://github.com/akashrawal/disposables"
+repository = "https://github.com/akashrawal/disposables"
+readme = "../README.md"
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}

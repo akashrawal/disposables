@@ -6,6 +6,7 @@ pub const V1_ENV_SETUP: &str = "DISPOSABLES_V1_SETUP";
 pub enum V1WaitCondition {
     Port(u16),
     Stdout(String),
+    Command{argv: Vec<String>, interval_msec: u64},
 }
 
 

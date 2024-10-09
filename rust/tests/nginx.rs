@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 
 use disposables::context::Context;
 use disposables::container::ContainerParams;
-use disposables_protocol::{V1Event, V1WaitCondition};
+use disposables::protocol::{V1Event, V1WaitCondition};
 
 
 #[test]

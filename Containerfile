@@ -9,6 +9,7 @@ RUN cargo install --path dlc --root dlc_out
 FROM scratch
 COPY --from=build /build/dlc_out/ /
 ENV RUST_BACKTRACE=1
+ENV RUST_LOG=info
 ENTRYPOINT ["/bin/dlc"]
 
 

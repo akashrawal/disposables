@@ -21,12 +21,13 @@ pub enum ExecError {
 fn run(arg0: impl Into<String>, args: impl Into<Args>) -> Result<String, ExecError> {
     let arg0 = arg0.into();
     let args = args.into();
-    let output = Command::new(arg0).args(args.get())
+    let output = Command::new(&arg0).args(args.get())
         .stdout(Stdio::piped()).stderr(Stdio::piped()).output()
         .map_err(ExecError::System)?;
     if ! output.status.success() {
         return Err(ExecError::ProgramReturnedUnsuccessfully{
-            args: args.get().iter().map(|s| s.to_owned())
+            args: [&arg0].into_iter().chain(args.get().iter())
+                .map(String::to_owned)
                 .collect(),
             code: output.status.code(),
             stderr: String::from_utf8_lossy(&output.stderr).to_string()

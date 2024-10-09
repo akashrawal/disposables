@@ -126,6 +126,48 @@ async fn check_ports(ctx: &Context, ready_signal: &ReadySignal) {
     futures::future::join_all(futures).await;
 }
 
+async fn check_commands(ctx: &Context, ready_signal: &ReadySignal) {
+    let mut futures = Vec::new();
+
+    for condition in &ctx.setup.wait_for {
+        if let V1WaitCondition::Command { argv, interval_msec } = condition {
+            let mut iter = argv.iter();
+            let argv0 = match iter.next() {
+                Some(x) => x,
+                None => {
+                    log::warn!("Empty command given as wait condition");
+                    continue;
+                }
+            };
+            let args = iter.collect::<Vec<_>>();
+            futures.push(async move {
+                loop {
+                    let status = Command::new(argv0).args(&args).status().await;
+                    match status {
+                        Err(e) => {
+                            log::warn!("Unable to execute {argv:?}: {e}");
+                        },
+                        Ok(status) => {
+                            if status.success() {
+                                ready_signal.dec(1).await; 
+                                break;
+                            }
+                        }
+                    }
+                    if *interval_msec > 0 {
+                        tokio::time::sleep(
+                            Duration::from_millis(*interval_msec)).await;
+                    } else {
+                        break;
+                    }
+                }
+            });
+        }
+    }
+
+    futures::future::join_all(futures).await;
+}
+
 async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
 
     let start_res: Result<(), V1Event> = async {
@@ -168,6 +210,8 @@ async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
                     },
                     //Check ports for readiness
                     check_ports(ctx, &ready_signal),
+                    //Check commands
+                    check_commands(ctx, &ready_signal),
                     //Run the timeout
                     async {
                         let dur = Duration::from_secs(ctx.setup.ready_timeout_s);
@@ -218,6 +262,7 @@ async fn handle_client(ctx: &Context, mut receiver: Receiver<V1Event>) {
                     output.write_all(&serialized).await
                 }.await.expect("Cannot send event to client");
             }
+            std::future::pending::<()>().await;
         }.fuse() => (),
         _ = async {
             //TODO: Temp code to respond to closing connection
@@ -261,11 +306,10 @@ async fn async_main() {
         futures::select!{
             _ = async {
                 run_entrypoint(&ctx, sender).await;
-                std::future::pending::<()>().await
+                std::future::pending::<()>().await;
             }.fuse() => (),
             _ = handle_client(&ctx, receiver).fuse() => ()
         };
-
     } else {
         panic!("Invalid command {}", cmd.to_string_lossy());
     }

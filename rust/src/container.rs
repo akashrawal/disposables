@@ -9,6 +9,7 @@ use disposables_protocol::{V1_ENV_SETUP, V1Event, V1SetupMsg, V1WaitCondition};
 
 use crate::args::Args;
 use crate::context::{DLC_MOUNT_POINT, ExecError, Context};
+use crate::util::try_use;
 
 const DLC_PORT: u16 = 4;
 
@@ -86,18 +87,6 @@ pub struct Container {
     dlc_conn: TcpStream,
 }
 
-fn try_connect(addrs: &str) -> Result<TcpStream, std::io::Error> {
-    let mut res = Err(std::io::Error::new(std::io::ErrorKind::NotFound, 
-            "No address available"));
-    for addr in addrs.split_whitespace() {
-        res = TcpStream::connect(addr);
-        if res.is_ok() {
-            return res;
-        }
-    }
-    res
-}
-
 #[derive(Debug)]
 pub enum ReadError {
     System(std::io::Error),
@@ -124,7 +113,7 @@ pub enum Error {
     CannotStartContainer(ExecError),
     CannotFindMappedPort(u16, ExecError),
     CannotParseMappedPort(String),
-    CannotConnectToDlc(String, std::io::Error),
+    CannotConnectToDlc(Vec<(String, std::io::Error)>),
     CannotReadPDU(ReadError),
 }
 
@@ -211,9 +200,9 @@ impl ContainerParams {
         let addr_string = port_map.get(&DLC_PORT)
             .expect("DLC port does not exist");
         
-        let dlc_conn = try_connect(addr_string)
-            .map_err(|e| Error::CannotConnectToDlc(addr_string.clone(), e))?;
-
+        let dlc_conn = try_use(addr_string.split_whitespace(), |x| {
+            TcpStream::connect(x).map_err(|e| (x.to_owned(), e))
+        }).map_err(Error::CannotConnectToDlc)?;
         
         Ok(Container {
             ctx: ctx.clone(),
@@ -235,10 +224,6 @@ impl Container {
 
     pub fn port(&self, port: u16) -> Option<Vec<&str>> {
         self.port_map.get(&port).map(|x| x.split_whitespace().collect())
-    }
-
-    pub fn connect_port(&self, port: u16) -> Result<TcpStream, std::io::Error> {
-        try_connect(self.port_map.get(&port).map(String::as_str).unwrap_or(""))
     }
 
     pub fn logs(&self) -> Result<String, ExecError> {

@@ -96,7 +96,8 @@ impl Context {
         let ctx = Self {
             engine,
             image: std::env::var("DISPOSABLES_DLC_IMAGE")
-                .unwrap_or("docker.io/akashrawal/disposables-dlc".into()),
+                .unwrap_or(concat!("docker.io/akashrawal/disposables-dlc:",
+                        std::env!("CARGO_PKG_VERSION")).into()),
             volume: std::env::var("DISPOSABLES_DLC_VOLUME")
                 .unwrap_or("disposables-dlc".into()),
         };

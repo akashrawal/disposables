@@ -28,6 +28,12 @@ for file in protocol/Cargo.toml rust/Cargo.toml; do
 	fi
 done
 
+protocol_version="`grep 'disposables_protocol =' rust/Cargo.toml | cut -d '"' -f 2`"
+if test "$protocol_version" != "$version"; then
+	echo "rust/Cargo.toml: protocol version missing" >&2
+	exit 1
+fi
+
 if test -n "$check"; then
 	echo "OK"
 else

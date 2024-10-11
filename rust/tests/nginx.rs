@@ -4,7 +4,7 @@ use std::net::TcpStream;
 
 use disposables::context::Context;
 use disposables::container::ContainerParams;
-use disposables::protocol::{V1Event, V1WaitCondition};
+use disposables::protocol::V1Event;
 use disposables::util::try_use;
 
 
@@ -15,7 +15,7 @@ fn normal_server() {
     let ctx = Context::new().unwrap();
     let mut container = ContainerParams::new("docker.io/nginx:alpine")
         .port(80)
-        .condition(V1WaitCondition::Port(80))
+        .wait_for_port(80)
         .create(&ctx).unwrap();
 
     assert!(matches!(container.wait(), Ok(V1Event::Ready)));

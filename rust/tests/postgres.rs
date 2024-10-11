@@ -1,23 +1,23 @@
 
 use disposables::context::Context;
 use disposables::container::ContainerParams;
-use disposables::protocol::{V1Event, V1WaitCondition};
+use disposables::protocol::V1Event;
 use sqlx::postgres::PgPoolOptions;
 
 #[tokio::test]
 async fn normal_server() {
     drop(env_logger::try_init());
 
+    log::info!("Creating context...");
     let ctx = Context::new().unwrap();
+    log::info!("Creating container...");
     let mut container = ContainerParams::new("docker.io/postgres:alpine")
         .env("POSTGRES_PASSWORD", "postgres")
         .port(5432)
-        .condition(V1WaitCondition::Command { 
-            argv: vec!["pg_isready".into()], 
-            interval_msec: 500
-        })
+        .wait_for_cmd(["pg_isready"], 500)
         .create(&ctx).unwrap();
 
+    log::info!("Waiting for container to be ready...");
     assert!(matches!(container.wait(), Ok(V1Event::Ready)),
         "Container start failed, Logs: {}", container.logs().unwrap());
     log::info!("Container is now ready");

@@ -49,9 +49,26 @@ impl ContainerParams {
         self
     }
 
-    pub fn condition(&mut self, condition: V1WaitCondition) -> &mut Self {
+    pub fn wait_for(&mut self, condition: V1WaitCondition) -> &mut Self {
         self.setup_msg.wait_for.push(condition);
         self 
+    }
+
+    pub fn wait_for_port(&mut self, port: u16) -> &mut Self {
+        self.wait_for(V1WaitCondition::Port(port))
+    }
+
+    pub fn wait_for_stdout(&mut self, expr: impl Into<String>) -> &mut Self {
+        self.wait_for(V1WaitCondition::Stdout(expr.into()))
+    }
+
+    pub fn wait_for_cmd(&mut self, args: impl Into<Args>,
+        interval_msec: u64) -> &mut Self {
+        let args: Args = args.into();
+        self.wait_for(V1WaitCondition::Command { 
+            argv: args.into_vec(),
+            interval_msec
+        })
     }
 
     pub fn entrypoint(&mut self, value: Args) -> &mut Self {

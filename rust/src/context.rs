@@ -45,6 +45,8 @@ pub struct Context {
     volume: String,
 }
 
+static GLOBAL_CONTEXT: std::sync::OnceLock<Context> 
+    = std::sync::OnceLock::new();
 
 #[derive(Debug)]
 pub enum Error {
@@ -115,6 +117,10 @@ impl Context {
             &ctx.image, "install", &install_dir]).map_err(Error::CreateVolume)?;
 
         Ok(ctx)
+    }
+
+    pub fn global() -> &'static Self {
+        GLOBAL_CONTEXT.get_or_init(|| Context::new().unwrap())
     }
 }
 

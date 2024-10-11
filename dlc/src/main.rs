@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 
+use base64::Engine;
 use futures::FutureExt;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
@@ -20,6 +21,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use ready::ReadySignal;
 
 struct MySetupMsg {
+    files: Vec<(String, String)>,
     port: u16,
     wait_for: Vec<V1WaitCondition>,
     ready_timeout_s: u64,
@@ -30,6 +32,7 @@ struct MySetupMsg {
 impl MySetupMsg {
     fn fetch() -> Self {
         let mut res = Self {
+            files: Vec::new(),
             port: 4,
             wait_for: Vec::new(),
             ready_timeout_s: 120,
@@ -42,6 +45,7 @@ impl MySetupMsg {
                 .unwrap_or_else(|e| {
                     panic!("Unable to parse {} variable: {e}", V1_ENV_SETUP)
                 });
+            res.files.extend(msg.files);
             res.port = msg.port;
             res.wait_for = msg.wait_for;
             if let Some(v) = msg.ready_timeout_s {
@@ -171,6 +175,17 @@ async fn check_commands(ctx: &Context, ready_signal: &ReadySignal) {
 async fn run_entrypoint(ctx: &Context, sender: Sender<V1Event>) {
 
     let start_res: Result<(), V1Event> = async {
+        //Write all files
+        for (path, base64) in &ctx.setup.files {
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(base64)
+                .map_err(|e| format!("Failed to decode {path}: {e}"))
+                .map_err(V1Event::FailedToPrepare)?;
+            std::fs::write(path, bytes)
+                .map_err(|e| format!("Failed to write {path}: {e}"))
+                .map_err(V1Event::FailedToPrepare)?;
+        }
+
         //Start the entrypoint
         let mut child = Command::new(&ctx.arg0).args(&ctx.args)
             .stdout(Stdio::piped())

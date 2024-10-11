@@ -5,6 +5,7 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::process::{Child, ChildStdout, Command, Stdio};
 
+use base64::Engine;
 use disposables_protocol::{V1_ENV_SETUP, V1Event, V1SetupMsg, V1WaitCondition};
 
 use crate::args::Args;
@@ -36,6 +37,7 @@ impl ContainerParams {
                 port: DLC_PORT,
                 wait_for: Vec::new(),
                 ready_timeout_s: None,
+                files: Vec::new(),
             },
 
             entrypoint: None,
@@ -46,6 +48,15 @@ impl ContainerParams {
 
     pub fn port(&mut self, port: u16) -> &mut Self {
         self.ports.push(port);
+        self
+    }
+
+    pub fn file(&mut self, path: impl Into<String>, bytes: impl AsRef<[u8]>)
+    -> &mut Self {
+        let base64 = base64::engine::general_purpose::STANDARD
+            .encode(bytes.as_ref());
+        self.setup_msg.files.push((path.into(), base64));
+            
         self
     }
 
@@ -135,7 +146,7 @@ pub enum Error {
 }
 
 impl ContainerParams {
-    pub fn create(&self, ctx: &Context) -> Result<Container, Error> {
+    pub fn create_using(&self, ctx: &Context) -> Result<Container, Error> {
         //Find image entrypoint and command
         let image_exists = match ctx.podman(["image", "exists", &self.image]) {
             Ok(_) => true, 
@@ -227,6 +238,10 @@ impl ContainerParams {
             port_map,
             dlc_conn
         })
+    }
+
+    pub fn create(&self) -> Result<Container, Error> {
+        self.create_using(Context::global())
     }
 }
 

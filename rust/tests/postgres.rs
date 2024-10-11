@@ -1,5 +1,4 @@
 
-use disposables::context::Context;
 use disposables::container::ContainerParams;
 use disposables::protocol::V1Event;
 use sqlx::postgres::PgPoolOptions;
@@ -8,19 +7,14 @@ use sqlx::postgres::PgPoolOptions;
 async fn normal_server() {
     drop(env_logger::try_init());
 
-    log::info!("Creating context...");
-    let ctx = Context::new().unwrap();
-    log::info!("Creating container...");
     let mut container = ContainerParams::new("docker.io/postgres:alpine")
         .env("POSTGRES_PASSWORD", "postgres")
         .port(5432)
         .wait_for_cmd(["pg_isready"], 500)
-        .create(&ctx).unwrap();
+        .create().unwrap();
 
-    log::info!("Waiting for container to be ready...");
     assert!(matches!(container.wait(), Ok(V1Event::Ready)),
         "Container start failed, Logs: {}", container.logs().unwrap());
-    log::info!("Container is now ready");
 
     let pool = async {
         for addr in container.port(5432).unwrap() {

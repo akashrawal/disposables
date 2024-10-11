@@ -15,12 +15,16 @@ pub struct V1SetupMsg {
     pub port: u16,
     pub wait_for: Vec<V1WaitCondition>,
     pub ready_timeout_s: Option<u64>,
+    pub files: Vec<(String, String)>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum V1Event {
     Ready,
     Exited(Option<i32>),
+    FailedToPrepare(String),
     FailedToStartEntrypoint(String),
     FailedTimeout,
 }
+
+

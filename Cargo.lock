@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "disposables"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "base64",
  "disposables_protocol",
@@ -287,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "disposables_protocol"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
  "serde_json",

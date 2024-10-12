@@ -136,6 +136,7 @@ where for<'a> T: serde::Deserialize<'a>
 
 #[derive(Debug)]
 pub enum Error {
+    CannotCreateVolume(ExecError),
     CannotPullImage(ExecError),
     CannotParseImageMetadata(serde_json::Error),
     CannotStartContainer(ExecError),
@@ -213,8 +214,13 @@ impl ContainerParams {
             .extend(img_entrypoint)
             .extend(img_cmd);
         
-        let id = ctx.podman(args)
-            .map_err(Error::CannotStartContainer)?;
+        let id = match ctx.podman(args.get()) {
+            Ok(id) => id,
+            Err(_) => {
+                ctx.create_volume().map_err(Error::CannotCreateVolume)?;
+                ctx.podman(args).map_err(Error::CannotStartContainer)?
+            }
+        };
 
         //Create port map
         let mut port_map = HashMap::<u16, String>::new();

@@ -51,7 +51,6 @@ static GLOBAL_CONTEXT: std::sync::OnceLock<Context>
 #[derive(Debug)]
 pub enum Error {
     CannotFindContainerEngine,
-    CreateVolume(ExecError),
 }
 
 impl Context {
@@ -79,6 +78,23 @@ impl Context {
         res
     }
 
+    pub(crate) fn create_volume(&self) -> Result<(), ExecError> {
+        let volume_exists = match self.podman(["volume", "exists", self.volume()]) {
+            Ok(_) => true,
+            Err(ExecError::ProgramReturnedUnsuccessfully{..}) => false,
+            Err(e) => return Err(e),
+        };
+        if ! volume_exists {
+            self.podman(["volume", "create", self.volume()])?;
+        }
+        let install_dir = self.dlc_install_dir();
+        let volume_spec = format!("{}:{DLC_MOUNT_POINT}", self.volume());
+        self.podman(["run", "-i", "--rm", "-v", &volume_spec,
+            self.image(), "install", &install_dir])?;
+
+        Ok(())
+    }
+
     pub fn new() -> Result<Self, Error>  {
         let engine = match std::env::var("DISPOSABLES_ENGINE") {
             Ok(engine) => engine, 
@@ -93,31 +109,14 @@ impl Context {
             }
         };
 
-        let ctx = Self {
+        Ok(Self {
             engine,
             image: std::env::var("DISPOSABLES_DLC_IMAGE")
                 .unwrap_or(concat!("docker.io/akashrawal/disposables-dlc:",
                         std::env!("CARGO_PKG_VERSION")).into()),
             volume: std::env::var("DISPOSABLES_DLC_VOLUME")
                 .unwrap_or("disposables-dlc".into()),
-        };
-
-        //Create volume
-        let volume_exists = match ctx.podman(["volume", "exists", &ctx.volume]) {
-            Ok(_) => true,
-            Err(ExecError::ProgramReturnedUnsuccessfully{..}) => false,
-            Err(e) => return Err(Error::CreateVolume(e)),
-        };
-        if ! volume_exists {
-            ctx.podman(["volume", "create", &ctx.volume])
-                .map_err(Error::CreateVolume)?;
-        }
-        let install_dir = ctx.dlc_install_dir();
-        let volume_spec = format!("{}:{DLC_MOUNT_POINT}", &ctx.volume);
-        ctx.podman(["run", "-i", "--rm", "-v", &volume_spec,
-            &ctx.image, "install", &install_dir]).map_err(Error::CreateVolume)?;
-
-        Ok(ctx)
+        })
     }
 
     pub fn global() -> &'static Self {

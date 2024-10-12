@@ -1,5 +1,8 @@
 
 pub mod util;
+#[cfg(feature = "async")]
+pub mod async_util;
+
 pub mod args;
 pub mod context;
 pub mod container;

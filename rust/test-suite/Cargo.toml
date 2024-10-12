@@ -1,0 +1,10 @@
+[package]
+name = "test-suite"
+edition = "2021"
+
+[dependencies]
+disposables = {path = "..", features = ["async"]}
+log = "0.4.22"
+env_logger = "0.11.5"
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio"] }
+tokio = { version = "1.40.0", features = ["full"] }

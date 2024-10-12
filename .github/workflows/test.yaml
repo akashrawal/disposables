@@ -24,7 +24,7 @@ jobs:
           name: dlc-image
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
-      - run: cargo test -p disposables
+      - run: RUST_LOG=test_suite=debug cargo test -p test-suite
       - run: buildah push dlc docker-archive:dlc-docker.tar:dlc
       - run: docker load < dlc-docker.tar
       - run: docker image ls

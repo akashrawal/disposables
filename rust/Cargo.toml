@@ -14,14 +14,12 @@ readme = "../README.md"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 thiserror = "1"
-
-disposables_protocol = {version = "0.1.4", path = "../protocol"}
 base64 = "0.22.1"
 
-[dev-dependencies]
-log = "0.4.22"
-env_logger = "0.11.5"
-sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio"] }
-tokio = { version = "1.40.0", features = ["full"] }
+futures = {version = "0.3", optional = true}
+
+disposables_protocol = {version = "0.1.4", path = "../protocol"}
 
 
+[features]
+async = ["dep:futures"]

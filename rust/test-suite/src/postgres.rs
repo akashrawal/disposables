@@ -1,4 +1,5 @@
 
+use disposables::async_util::try_use;
 use disposables::container::ContainerParams;
 use disposables::protocol::V1Event;
 use sqlx::postgres::PgPoolOptions;
@@ -16,18 +17,12 @@ async fn normal_server() {
     assert!(matches!(container.wait(), Ok(V1Event::Ready)),
         "Container start failed, Logs: {}", container.logs().unwrap());
 
-    let pool = async {
-        for addr in container.port(5432).unwrap() {
-            match PgPoolOptions::new()
-                .connect(&format!("postgres://postgres:postgres@{addr}/postgres"))
-                .await 
-            { 
-                Ok(x) => return x,
-                Err(e) => log::info!("Connect({addr}): {e}"),
-            }
+    let pool = try_use(container.port(5432).unwrap(), |addr| {
+        let addr = format!("postgres://postgres:postgres@{addr}/postgres");
+        async move {
+            PgPoolOptions::new().connect(&addr).await
         }
-        panic!("Cannot connect to database");
-    }.await;
+    }).await.unwrap();
 
     sqlx::query("CREATE TABLE test(id INTEGER);")
         .execute(&pool).await.unwrap();

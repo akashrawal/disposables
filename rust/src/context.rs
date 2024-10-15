@@ -45,6 +45,63 @@ pub struct Context {
     volume: String,
 }
 
+#[derive(Default)]
+pub struct ContextBuilder {
+    engine: Option<String>,
+    image: Option<String>,
+    volume: Option<String>,
+}
+
+impl ContextBuilder {
+    pub fn new() -> Self {
+        Default::default() 
+    }
+
+    pub fn engine(&mut self, value: impl Into<String>) -> &mut Self {
+        self.engine = Some(value.into());
+        self
+    }
+
+    pub fn image(&mut self, value: impl Into<String>) -> &mut Self {
+        self.image = Some(value.into());
+        self
+    }
+
+    pub fn volume(&mut self, value: impl Into<String>) -> &mut Self {
+        self.volume = Some(value.into());
+        self
+    }
+
+    pub fn build(&self) -> Result<Context, Error> {
+        let maybe_engine = self.engine.clone()
+            .or_else(|| std::env::var("DISPOSABLES_ENGINE").ok());
+            
+        let engine = match maybe_engine {
+            Some(engine) => engine, 
+            None => {
+                if run("podman", ["--version"]).is_ok() {
+                    "podman"
+                } else if run("docker", ["--version"]).is_ok() {
+                    "docker"
+                } else {
+                    return Err(Error::CannotFindContainerEngine);
+                }.into()
+            }
+        };
+
+        Ok(Context {
+            engine,
+            image: self.image.clone()
+                .or_else(|| std::env::var("DISPOSABLES_DLC_IMAGE").ok())
+                .unwrap_or(concat!("docker.io/akashrawal/disposables-dlc:",
+                        std::env!("CARGO_PKG_VERSION")).into()),
+            volume: self.volume.clone()
+                .or_else(|| std::env::var("DISPOSABLES_DLC_VOLUME").ok())
+                .unwrap_or("disposables-dlc".into()),
+        })
+    }
+}
+
 static GLOBAL_CONTEXT: std::sync::OnceLock<Context> 
     = std::sync::OnceLock::new();
 
@@ -96,27 +153,7 @@ impl Context {
     }
 
     pub fn new() -> Result<Self, Error>  {
-        let engine = match std::env::var("DISPOSABLES_ENGINE") {
-            Ok(engine) => engine, 
-            Err(_) => {
-                if run("podman", ["--version"]).is_ok() {
-                    "podman"
-                } else if run("docker", ["--version"]).is_ok() {
-                    "docker"
-                } else {
-                    return Err(Error::CannotFindContainerEngine);
-                }.into()
-            }
-        };
-
-        Ok(Self {
-            engine,
-            image: std::env::var("DISPOSABLES_DLC_IMAGE")
-                .unwrap_or(concat!("docker.io/akashrawal/disposables-dlc:",
-                        std::env!("CARGO_PKG_VERSION")).into()),
-            volume: std::env::var("DISPOSABLES_DLC_VOLUME")
-                .unwrap_or("disposables-dlc".into()),
-        })
+        ContextBuilder::default().build()
     }
 
     pub fn global() -> &'static Self {

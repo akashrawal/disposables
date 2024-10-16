@@ -1,3 +1,6 @@
+/*!
+ * Container
+ */
 
 
 use std::collections::HashMap;
@@ -29,6 +32,9 @@ pub struct ContainerParams {
 
 
 impl ContainerParams {
+    /**
+     * Creates a new ContainerParams struct for a given image.
+     */
     pub fn new(image: impl Into<String>) -> Self {
         Self {
             image: image.into(),
@@ -46,11 +52,18 @@ impl ContainerParams {
         }
     }
 
+    /**
+     * Adds a port to be forwarded from the container to the host.
+     */
     pub fn port(&mut self, port: u16) -> &mut Self {
         self.ports.push(port);
         self
     }
 
+    /**
+     * Adds a file with a given path and contents to be written at a specific 
+     * path.
+     */
     pub fn file(&mut self, path: impl Into<String>, bytes: impl AsRef<[u8]>)
     -> &mut Self {
         let base64 = base64::engine::general_purpose::STANDARD
@@ -60,19 +73,41 @@ impl ContainerParams {
         self
     }
 
+    /**
+     * Add a condition to wait for before accepting that the container is ready.
+     */
     pub fn wait_for(&mut self, condition: V1WaitCondition) -> &mut Self {
         self.setup_msg.wait_for.push(condition);
         self 
     }
 
+    /**
+     * Add a condition to wait for a port to be connectable.
+     * When the port is connectable, the container is considered ready.
+     *
+     * There is no need to also forward the port to the host.
+     */
     pub fn wait_for_port(&mut self, port: u16) -> &mut Self {
         self.wait_for(V1WaitCondition::Port(port))
     }
 
+    /**
+     * Add a condition to wait for a pattern to be found in the container's 
+     * stdout. When the pattern is found, the container is considered ready.
+     */
     pub fn wait_for_stdout(&mut self, expr: impl Into<String>) -> &mut Self {
         self.wait_for(V1WaitCondition::Stdout(expr.into()))
     }
 
+    /**
+     * Run a command in the container to check if it is ready.
+     * When the command returns successfully, the container is considered ready.
+     *
+     * If `interval_msec` is non-zero then the command is run every
+     * `interval_msec` milliseconds. If it is zero then the command is only
+     * executed once and then the command is supposed to stay running till
+     * the container is ready.
+     */
     pub fn wait_for_cmd(&mut self, args: impl Into<Args>,
         interval_msec: u64) -> &mut Self {
         let args: Args = args.into();
@@ -82,16 +117,25 @@ impl ContainerParams {
         })
     }
 
+    /**
+     * Replaces the container's entrypoint with the given argument list.
+     */
     pub fn entrypoint(&mut self, value: Args) -> &mut Self {
         self.entrypoint = Some(value);
         self
     }
 
+    /**
+     * Replaces the container's command with the given argument list.
+     */
     pub fn cmd(&mut self, value: Args) -> &mut Self {
         self.cmd = Some(value);
         self
     }
 
+    /**
+     * Adds an environment variable to the container.
+     */
     pub fn env(&mut self, key: impl Into<String>, value: impl Into<String>)
         -> &mut Self {
         self.env.push((key.into(), value.into()));
@@ -102,12 +146,11 @@ impl ContainerParams {
 /**
  * A type that represents a running container.
  *
- * When this struct is destroyed, the container is also terminated.
+ * When this struct is dropped, the container is also terminated.
  *
- * This struct is also safe to be used as a global variable, the container
+ * This struct is also safe to be stored in a global variable, the container
  * is terminated when program exits, crashes, or gets killed.
  */
-
 pub struct Container {
     ctx: Context,
     id: String, 
@@ -147,6 +190,10 @@ pub enum Error {
 }
 
 impl ContainerParams {
+    /**
+     * Creates a new container based on the `ContainerParams` struct
+     * using the given context.
+     */
     pub fn create_using(&self, ctx: &Context) -> Result<Container, Error> {
         //Find image entrypoint and command
         let image_exists = match ctx.podman(["image", "exists", &self.image]) {
@@ -246,28 +293,65 @@ impl ContainerParams {
         })
     }
 
+    /**
+     * Creates a new container based on the `ContainerParams` struct
+     * using the global context.
+     */
     pub fn create(&self) -> Result<Container, Error> {
         self.create_using(Context::global())
     }
 }
 
 impl Container {
+    /**
+     * Returns the container's ID. The container can be identified
+     * by Docker/Podman using the ID.
+     *
+     * ```rust
+     * let mut container = ContainerParams::new("docker.io/postgres:16-alpine")
+     *     .env("POSTGRES_HOST_AUTH_METHOD", "trust")
+     *     .port(5432)
+     *     .wait_for_cmd(["pg_isready"], 500)
+     *     .create().unwrap();
+     *
+     * assert!(matches!(container.wait().unwrap(), V1Event::Ready),
+     *     "Postgres failed to start: {}", container.logs().unwrap());
+     *
+     * Context::global().podman(["exec", container.id(),
+     *     "createdb", "-U", "postgres", "new_database"]).unwrap();
+     * ``` 
+     */
     pub fn id(&self) -> &str {
         &self.id
     }
 
+    /**
+     * Waits for events from the running container.
+     */
     pub fn wait(&mut self) -> Result<V1Event, Error> {
         read_pdu(&mut self.dlc_conn).map_err(Error::CannotReadPDU)
     }
 
+    /**
+     * Returns the port mapping for the given port.
+     */
     pub fn port(&self, port: u16) -> Option<Vec<&str>> {
         self.port_map.get(&port).map(|x| x.split_whitespace().collect())
     }
 
+    /**
+     * Returns the container's logs.
+     */
     pub fn logs(&self) -> Result<String, ExecError> {
         self.ctx.podman(["logs", &self.id]) 
     }
     
+    /**
+     * Opens a stream to the container's logs.
+     *
+     * The function basically runs `podman logs -f <container_id>`
+     * and starts streaming the stdout.
+     */
     pub fn logs_stream(&self) -> Result<(ChildStdout, Child), std::io::Error> {
         let mut child = Command::new(self.ctx.engine())
             .args(["logs", "-f", &self.id])

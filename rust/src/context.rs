@@ -1,5 +1,6 @@
-
-//Library globals: Container engine, DLC container and volume names
+/*!
+ * Library globals: Container engine, DLC container and volume names
+ */
 
 use std::process::{Command, Stdio};
 
@@ -38,14 +39,21 @@ fn run(arg0: impl Into<String>, args: impl Into<Args>) -> Result<String, ExecErr
         .map(|s| s.trim().to_owned())
 }
 
-#[derive(Clone)]
+/**
+ * Stores environment details about which container engine to use
+ * and how to use it.
+ */
+#[derive(Debug, Clone)]
 pub struct Context {
     engine: String,
     image: String,
     volume: String,
 }
 
-#[derive(Default)]
+/**
+ * Builder pattern implementation for `Context`.
+ */
+#[derive(Default, Debug)]
 pub struct ContextBuilder {
     engine: Option<String>,
     image: Option<String>,
@@ -53,25 +61,53 @@ pub struct ContextBuilder {
 }
 
 impl ContextBuilder {
+    /**
+     * Creates a new builder.
+     */
     pub fn new() -> Self {
         Default::default() 
     }
 
+    /**
+     * Sets the command for the container engine.
+     *
+     * The default is fetched from `DISPOSABLES_ENGINE` environment variable.
+     * If the environment variable is not set,
+     * it will check for `podman` or `docker`, whichever is available.
+     * Podman is preferred over Docker.
+     */
     pub fn engine(&mut self, value: impl Into<String>) -> &mut Self {
         self.engine = Some(value.into());
         self
     }
 
+    /**
+     * Sets the DLC container image to use.
+     *
+     * The default is fetched from `DISPOSABLES_DLC_IMAGE` environment variable.
+     * If the environment variable is not set,
+     * `docker.io/akashrawal/dlc:<crate-version>` is used.
+     */
     pub fn image(&mut self, value: impl Into<String>) -> &mut Self {
         self.image = Some(value.into());
         self
     }
 
+    /**
+     * Sets the volume to be used for storing DLC binary.
+     *
+     * The default is fetched from `DISPOSABLES_DLC_VOLUME` environment variable.
+     * If the environment variable is not set,
+     * `docker.io/akashrawal/dlc:<crate-version>` is used.
+     */
     pub fn volume(&mut self, value: impl Into<String>) -> &mut Self {
         self.volume = Some(value.into());
         self
     }
 
+    /**
+     * Builds the context object.
+     */
     pub fn build(&self) -> Result<Context, Error> {
         let maybe_engine = self.engine.clone()
             .or_else(|| std::env::var("DISPOSABLES_ENGINE").ok());
@@ -111,15 +147,34 @@ pub enum Error {
 }
 
 impl Context {
+    /**
+     * Gets the container engine to be used.
+     * @see ContextBuilder::engine
+     */
     pub fn engine(&self) -> &str {
         &self.engine
     }
+
+    /**
+     * Gets the disposables image to be used.
+     * @see ContextBuilder::image
+     */
     pub fn image(&self) -> &str {
         &self.image
     }
+
+    /**
+     * Gets the volume to be used to store the disposables binary.
+     * @see ContextBuilder::volume
+     */
     pub fn volume(&self) -> &str {
         &self.volume
     }
+
+    /**
+     * Executes the container engine with given arguments and captures its
+     * output.
+     */
     pub fn podman(&self, args: impl Into<Args>) -> Result<String, ExecError> {
         run(&self.engine, args)
     }
@@ -152,12 +207,11 @@ impl Context {
         Ok(())
     }
 
-    pub fn new() -> Result<Self, Error>  {
-        ContextBuilder::default().build()
-    }
-
+    /**
+     * Gets the default global context.
+     */
     pub fn global() -> &'static Self {
-        GLOBAL_CONTEXT.get_or_init(|| Context::new().unwrap())
+        GLOBAL_CONTEXT.get_or_init(|| ContextBuilder::default().build().unwrap())
     }
 }
 

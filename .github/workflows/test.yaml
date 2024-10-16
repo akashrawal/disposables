@@ -5,7 +5,7 @@ env:
   DISPOSABLES_DLC_IMAGE: dlc
 jobs:
   build_dlc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -17,7 +17,7 @@ jobs:
           path: dlc.tar
   rust:
     needs: [build_dlc]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -45,7 +45,7 @@ jobs:
       IMAGE: ${{ vars.DLC_IMAGE }}
       TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
       TAG: ${{ github.ref_name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - run: ./dev/do_release.sh check "${TAG#r}"
@@ -64,7 +64,7 @@ jobs:
     env: 
       TAG: ${{ github.ref_name }}
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - run: cargo publish -p disposables_protocol

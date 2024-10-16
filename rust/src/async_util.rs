@@ -1,3 +1,5 @@
+//!Test utility functions (async)
+
 use std::future::Future;
 
 use futures::stream::FuturesUnordered;

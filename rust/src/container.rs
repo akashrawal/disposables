@@ -158,10 +158,15 @@ pub struct Container {
     dlc_conn: TcpStream,
 }
 
-#[derive(Debug)]
+///Error while reading from the DLC port.
+#[derive(Debug, thiserror::Error)]
 pub enum ReadError {
-    System(std::io::Error),
-    Deserialize(serde_json::Error),
+    /// OS side error while reading from the DLC port.
+    #[error("OS side error")]
+    System(#[source] std::io::Error),
+    /// Error while deserializing the PDU.
+    #[error("Error while deserializing PDU")]
+    Deserialize(#[source] serde_json::Error),
 }
 
 fn read_pdu<T>(stream: &mut impl Read) -> Result<T, ReadError> 
@@ -177,15 +182,32 @@ where for<'a> T: serde::Deserialize<'a>
     serde_json::from_slice(&pdu_body).map_err(ReadError::Deserialize)
 }
 
-#[derive(Debug)]
+/// Error type for this module.
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    CannotCreateVolume(ExecError),
-    CannotPullImage(ExecError),
-    CannotParseImageMetadata(serde_json::Error),
+    /// Cannot create volume for DLC.
+    #[error("Cannot create volume for DLC")]
+    CannotCreateVolume(#[source] ExecError),
+    /// Cannot pull the container image.
+    #[error("Cannot pull the container image")]
+    CannotPullImage(#[source] ExecError),
+    /// Error while parsing the image metadata.
+    #[error("Error while parsing image metadata")]
+    CannotParseImageMetadata(#[source] serde_json::Error),
+    /// Cannot start the container.
+    #[error("Cannot start the container")]
     CannotStartContainer(ExecError),
+    /// Cannot find the mapped port.
+    #[error("Cannot find the mapped port")]
     CannotFindMappedPort(u16, ExecError),
+    /// Cannot parse the mapped port. (`podman port` output)
+    #[error("Cannot parse the mapped port")]
     CannotParseMappedPort(String),
+    /// Cannot connect to the DLC port.
+    #[error("Cannot connect to the DLC port")]
     CannotConnectToDlc(Vec<(String, std::io::Error)>),
+    /// Cannot read data from the DLC port.
+    #[error("Cannot read data from the DLC port")]
     CannotReadPDU(ReadError),
 }
 

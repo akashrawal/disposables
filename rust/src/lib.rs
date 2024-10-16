@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 /*!
  * Disposables is a library that runs your test dependencies in containers.
  * Once your tests finish running, the containers are automatically cleaned up.
@@ -57,7 +59,7 @@ pub mod args;
 pub mod context;
 pub mod container;
 
-//Re-exports
+/// Disposables protocol re-exports
 pub mod protocol {
     pub use disposables_protocol::*;
 }

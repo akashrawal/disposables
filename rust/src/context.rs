@@ -4,17 +4,30 @@
 
 use std::process::{Command, Stdio};
 
-pub const DLC_MOUNT_POINT: &str = "/dlc";
+pub(crate) const DLC_MOUNT_POINT: &str = "/dlc";
 
 use crate::args::Args;
 
-#[derive(Debug)]
+/**
+ * Errors that can occur while running a command.
+ */
+#[derive(Debug, thiserror::Error)]
 pub enum ExecError {
-    System(std::io::Error),
-    Encoding(std::string::FromUtf8Error),
+    /// OS side error while running the command.
+    #[error("OS side error")]
+    System(#[source] std::io::Error),
+    /// Error while interpreting the output of the command as UTF-8.
+    #[error("Error while interpreting output as UTF-8")]
+    Encoding(#[source] std::string::FromUtf8Error),
+    /// Program returned unsuccessfully.
+    #[error("Program returned unsuccessfully")]
     ProgramReturnedUnsuccessfully{
+        /// Arguments passed to the program.
         args: Vec<String>, 
+        /// Exit code of the program.
+        /// (None if the program was terminated by a signal)
         code: Option<i32>, 
+        /// Stderr of the program.
         stderr: String
     },
 }
@@ -113,7 +126,13 @@ impl ContextBuilder {
             .or_else(|| std::env::var("DISPOSABLES_ENGINE").ok());
             
         let engine = match maybe_engine {
-            Some(engine) => engine, 
+            Some(engine) => {
+                if run(&engine, ["--version"]).is_ok() {
+                    engine
+                } else {
+                    return Err(Error::CannotFindContainerEngine);
+                }
+            },
             None => {
                 if run("podman", ["--version"]).is_ok() {
                     "podman"
@@ -141,8 +160,11 @@ impl ContextBuilder {
 static GLOBAL_CONTEXT: std::sync::OnceLock<Context> 
     = std::sync::OnceLock::new();
 
-#[derive(Debug)]
+/// Errors that can occur while creating a context.
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Cannot find container engine.
+    #[error("Cannot find container engine")]
     CannotFindContainerEngine,
 }
 

@@ -25,13 +25,16 @@ jobs:
       - run: cargo test -p disposables --lib
       - run: buildah pull oci-archive:dlc.tar
       - run: buildah images
-      - run: RUST_LOG=test_suite=debug cargo test -p test-suite
+      - run: cargo test -p test-suite
+        env: 
+          RUST_LOG: test_suite=debug
       - run: buildah push dlc docker-archive:dlc-docker.tar:dlc
       - run: docker load < dlc-docker.tar
       - run: docker image ls
+      - run: cargo test -p test-suite
         env: 
+          RUST_LOG: test_suite=debug
           DISPOSABLES_ENGINE: docker
-      - run: RUST_LOG=test_suite=debug cargo test -p test-suite
       - run: cargo test -p disposables
   release_dlc:
     needs: [build_dlc, rust]

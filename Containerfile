@@ -1,10 +1,11 @@
-FROM docker.io/rust:1.81-alpine AS build
+FROM --platform=$BUILDPLATFORM docker.io/rust:1.81-alpine AS build
+ARG TARGETARCH
 
 RUN apk add build-base
 
 WORKDIR /build
 COPY . .
-RUN cargo install --path dlc --root dlc_out
+RUN ./dlc/crossbuild.sh
 
 FROM scratch
 COPY --from=build /build/dlc_out/ /

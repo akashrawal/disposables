@@ -57,6 +57,7 @@ jobs:
       - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`
       - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\..*\)\..*/\1/' <<< "$TAG"`
       - run: buildah push dlc $IMAGE:`sed -e 's/r\(.*\)\..*\..*/\1/' <<< "$TAG"`
+      - run: buildah push dlc $IMAGE
   release_rust:
     needs: [release_dlc]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

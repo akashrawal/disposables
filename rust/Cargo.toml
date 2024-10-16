@@ -19,6 +19,7 @@ base64 = "0.22.1"
 futures = {version = "0.3", optional = true}
 
 disposables_protocol = {version = "0.1.6", path = "../protocol"}
+log = "0.4.22"
 
 
 [features]

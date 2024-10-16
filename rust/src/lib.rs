@@ -20,6 +20,12 @@
  * finished.
  *
  * ```rust
+ * # use disposables::{ContainerParams, Context};
+ * # use disposables::util::try_use;
+ * # use disposables::protocol::V1Event;
+ * # use std::net::TcpStream;
+ * # use std::io::{Read, Write};
+ *
  * let mut container = ContainerParams::new("docker.io/nginx:alpine")
  *     .port(80)  //< Port 80 will be exposed
  *     .wait_for_port(80) //< Wait for port 80 to be connectable

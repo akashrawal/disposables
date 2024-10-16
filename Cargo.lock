@@ -280,6 +280,7 @@ dependencies = [
  "base64",
  "disposables_protocol",
  "futures",
+ "log",
  "serde",
  "serde_json",
  "thiserror",

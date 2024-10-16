@@ -308,6 +308,10 @@ impl Container {
      * by Docker/Podman using the ID.
      *
      * ```rust
+     * # use disposables::{ContainerParams, Context};
+     * # use disposables::util::try_use;
+     * # use disposables::protocol::V1Event;
+     *
      * let mut container = ContainerParams::new("docker.io/postgres:16-alpine")
      *     .env("POSTGRES_HOST_AUTH_METHOD", "trust")
      *     .port(5432)

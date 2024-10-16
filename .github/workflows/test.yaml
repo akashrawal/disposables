@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - run: docker buildx build --platform=linux/amd64,linux/arm,linux/arm64 -t dlc .
+      - run: docker buildx build --platform=linux/amd64,linux/arm,linux/arm64 -t dlc -f Containerfile .
   rust:
     needs: [build_dlc]
     runs-on: ubuntu-latest

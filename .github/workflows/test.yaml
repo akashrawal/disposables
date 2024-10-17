@@ -8,8 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: buildah build -t dlc .
-      - run: buildah push dlc oci-archive:dlc.tar:dlc
+      - run: buildah manifest create dlc
+      - run: buildah build --layers --arch amd64 --manifest dlc .
+      - run: buildah build --layers --arch arm --manifest dlc .
+      - run: buildah build --layers --arch arm64 --manifest dlc .
+      - run: buildah manifest push --all dlc oci-archive:dlc.tar:dlc
       - uses: actions/upload-artifact@v4
         with:
           name: dlc-image

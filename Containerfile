@@ -1,4 +1,5 @@
 FROM --platform=$BUILDPLATFORM docker.io/rust:1.81-alpine AS build
+ARG BUILDARCH
 ARG TARGETARCH
 
 RUN apk add build-base

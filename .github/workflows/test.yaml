@@ -45,23 +45,15 @@ jobs:
       REGISTRY: ${{ vars.DLC_REGISTRY }}
       IMAGE: ${{ vars.DLC_IMAGE }}
       TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
-      TAG: ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
-      - run: ./dev/do_release.sh check "${TAG#r}"
       - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
       - run: buildah manifest create dlc
       - run: buildah build --arch amd64 --manifest dlc .
       - run: buildah build --arch arm64 --manifest dlc .
       - run: buildah manifest push --all dlc $IMAGE
-      - run: buildah manifest push --all dlc \
-             $IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`
-      - run: buildah manifest push --all dlc \
-             $IMAGE:`sed -e 's/r\(.*\..*\)\..*/\1/' <<< "$TAG"`
-      - run: buildah manifest push --all dlc \
-             $IMAGE:`sed -e 's/r\(.*\)\..*\..*/\1/' <<< "$TAG"`
   release_dlc:
     needs: [build_dlc, rust]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

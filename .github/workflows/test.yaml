@@ -37,21 +37,6 @@ jobs:
           RUST_LOG: test_suite=debug
           DISPOSABLES_ENGINE: docker
       - run: cargo test -p disposables
-  release_dlc_test:
-    needs: [build_dlc, rust]
-    env: 
-      REGISTRY: ${{ vars.DLC_REGISTRY }}
-      IMAGE: ${{ vars.DLC_IMAGE }}
-      TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
-      - run: buildah manifest create dlc
-      - run: buildah build --arch amd64 --manifest dlc .
-      - run: buildah build --arch arm64 --manifest dlc .
-      - run: buildah manifest push --all dlc "docker://$IMAGE"
   release_dlc:
     needs: [build_dlc, rust]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

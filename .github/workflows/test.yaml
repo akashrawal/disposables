@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: cat Containerfile
       - run: buildah manifest create dlc
       - run: buildah build --layers --arch amd64 --manifest dlc .
       - run: buildah build --layers --arch arm --manifest dlc .

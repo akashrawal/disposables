@@ -69,13 +69,13 @@ jobs:
       - run: buildah manifest create dlc
       - run: buildah build --arch amd64 --manifest dlc .
       - run: buildah build --arch arm64 --manifest dlc .
-      - run: buildah manifest push --all dlc docker://$IMAGE
+      - run: buildah manifest push --all dlc "docker://$IMAGE"
       - run: buildah manifest push --all dlc \
-             docker://$IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`
+             "docker://$IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`"
       - run: buildah manifest push --all dlc \
-             docker://$IMAGE:`sed -e 's/r\(.*\..*\)\..*/\1/' <<< "$TAG"`
+             "docker://$IMAGE:`sed -e 's/r\(.*\..*\)\..*/\1/' <<< "$TAG"`"
       - run: buildah manifest push --all dlc \
-             docker://$IMAGE:`sed -e 's/r\(.*\)\..*\..*/\1/' <<< "$TAG"`
+             "docker://$IMAGE:`sed -e 's/r\(.*\)\..*\..*/\1/' <<< "$TAG"`"
   release_rust:
     needs: [release_dlc]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

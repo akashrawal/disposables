@@ -69,7 +69,7 @@ jobs:
       - run: buildah manifest create dlc
       - run: buildah build --arch amd64 --manifest dlc .
       - run: buildah build --arch arm64 --manifest dlc .
-      - run: buildah manifest push --all dlc $IMAGE
+      - run: buildah manifest push --all dlc docker://$IMAGE
       - run: buildah manifest push --all dlc \
              docker://$IMAGE:`sed -e 's/r\(.*\..*\..*\)/\1/' <<< "$TAG"`
       - run: buildah manifest push --all dlc \

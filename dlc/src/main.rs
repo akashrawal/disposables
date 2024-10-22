@@ -304,8 +304,11 @@ async fn async_main() {
                 panic!("Unable to create target directory: {e}")
             }};
         }
-        std::fs::copy(current_exe, target.join("dlc"))
-            .expect("Unable to install executable");
+        if !std::fs::exists(target.join("dlc"))
+            .expect("Unable to check if DLC binary exists") {
+            std::fs::copy(current_exe, target.join("dlc"))
+                .expect("Unable to install executable");
+        }
     } else if cmd == "run" {
         let arg0 = args.next().expect("Entrypoint is missing");
         let args = args.collect::<Vec<_>>();

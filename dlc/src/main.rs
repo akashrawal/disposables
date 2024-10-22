@@ -304,6 +304,7 @@ async fn async_main() {
                 panic!("Unable to create target directory: {e}")
             }};
         }
+        
         if !std::fs::exists(target.join("dlc"))
             .expect("Unable to check if DLC binary exists") {
             std::fs::copy(current_exe, target.join("dlc"))

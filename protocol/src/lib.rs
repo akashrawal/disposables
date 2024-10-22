@@ -10,6 +10,7 @@ pub const V1_ENV_SETUP: &str = "DISPOSABLES_V1_SETUP";
  * is ready.
  */
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", content = "data")]
 pub enum V1WaitCondition {
     /// Wait for a port to be connectable.
     Port(u16),
@@ -50,6 +51,7 @@ pub struct V1SetupMsg {
  * The events are serialized in JSON format and sent to the client.
  */
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", content = "data")]
 pub enum V1Event {
     /// The container is ready to use.
     Ready,

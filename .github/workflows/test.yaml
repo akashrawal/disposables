@@ -37,6 +37,22 @@ jobs:
           RUST_LOG: test_suite=debug
           DISPOSABLES_ENGINE: docker
       - run: cargo test -p disposables
+  java:
+    needs: [build_dlc]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: cargo test -p disposables --lib
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+      - run: cd java && ./gradlew test
   release_dlc:
     needs: [build_dlc, rust]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

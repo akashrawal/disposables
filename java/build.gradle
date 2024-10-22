@@ -1,0 +1,48 @@
+
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenCentral()
+}
+
+group 'io.p01def.disposables'
+version '0.1.8'
+
+dependencies {
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+
+    testImplementation libs.junit.jupiter
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+tasks.register('makeProjectInfo') {
+	inputs.property('version', project.version)
+
+	def resourcesDir = new File(sourceSets.main.output.resourcesDir,
+		'io/p01def/disposables');
+	def outputFile = new File(resourcesDir, "project-info.properties");
+	outputs.file(outputFile);
+
+	doLast {
+        resourcesDir.mkdirs();
+        outputFile.text = "version=$project.version\n";
+    }
+}
+
+tasks.named('processResources') {
+	dependsOn tasks.named('makeProjectInfo')
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

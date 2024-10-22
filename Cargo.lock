@@ -1439,7 +1439,6 @@ dependencies = [
  "disposables",
  "env_logger",
  "log",
- "serde_json",
  "sqlx",
  "tokio",
 ]

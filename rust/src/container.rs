@@ -105,7 +105,7 @@ impl ContainerParams {
      *
      * If `interval_msec` is non-zero then the command is run every
      * `interval_msec` milliseconds. If it is zero then the command is only
-     * executed once and then the command is supposed to stay running till
+     * executed once and then the command is supposed to block till
      * the container is ready.
      */
     pub fn wait_for_cmd(&mut self, args: impl Into<Args>,

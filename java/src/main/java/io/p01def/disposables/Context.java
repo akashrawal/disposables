@@ -1,14 +1,19 @@
 
 package io.p01def.disposables;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 import io.p01def.disposables.Util.ExitStatusException;
 
+/**
+ * Stores environment details about which container engine to use
+ * and how to use it.
+ */
 public class Context {
 	private final String engine;
 	private final String image;
@@ -18,6 +23,11 @@ public class Context {
 
 	static String DLC_MOUNT_POINT = "/dlc";
 
+    /**
+     * Gets the default global context.
+	 *
+	 * @return The default global context.
+     */
 	public static synchronized Context global() {
 		if (globalContext == null) {
 			globalContext = new Context();
@@ -25,6 +35,13 @@ public class Context {
 		return globalContext;
 	}
 
+    /**
+     * Builds a new context object.
+	 *
+	 * @param engine Path to the container engine to use, or null to auto-detect.
+     * @param image The DLC image to use, or null to use the default image.
+     * @param volume The DLC volume to use, or null to use the default volume.
+     */
 	public Context(String engine, String image, String volume) {
 		if (engine == null) {
 			engine = System.getenv("DISPOSABLES_ENGINE");
@@ -79,24 +96,55 @@ public class Context {
 		this.volume = volume;
 	}
 
+	/**
+	 * Builds a new context object.
+	 *
+	 * Equivalent to calling `new Context(null, null, null)`.
+	 */
 	public Context() {
 		this(null, null, null);
 	}
 
+	/**
+	 * Gets the container engine to be used.
+	 *
+	 * @return Path to the container engine to use.
+	 */
 	public String getEngine() {
 		return engine;
 	}
 
+	/**
+	 * Gets the DLC image to be used.
+	 *
+	 * @return The DLC image to use.
+	 */
 	public String getImage() {
 		return image;
 	}
 
+	/**
+	 * Gets the DLC volume to be used.
+	 *
+	 * @return The DLC volume to use.
+	 */
 	public String getVolume() {
 		return volume;
 	}
 
+	/**
+	 * Executes the container engine with given arguments and captures its
+	 * output.
+	 *
+	 * @param args The arguments to pass to the container engine.
+	 * @return The output of the container engine.
+	 * @throws IOException If an I/O error occurs while running the container engine.
+	 * @throws InterruptedException If the thread is interrupted.
+	 * @throws ExitStatusException If the container engine exits with a non-zero
+	 *                             exit code.
+	 */
 	public String podman(String... args)
-	throws IOException, InterruptedException, Util.ExitStatusException {
+	throws IOException, InterruptedException, ExitStatusException {
 		ArrayList<String> argsList = new ArrayList<>();
 		argsList.add(engine);
 		argsList.addAll(Arrays.asList(args));

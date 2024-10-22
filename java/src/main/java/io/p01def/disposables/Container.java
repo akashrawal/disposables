@@ -22,6 +22,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.p01def.disposables.Util.ExitStatusException;
 import io.p01def.disposables.protocol.V1Event;
 
+/**
+ * A type that represents a running container.
+ */
 public class Container implements Closeable {
 	public static class MappedPort {
 		public final InetAddress addr;

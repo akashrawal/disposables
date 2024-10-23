@@ -53,6 +53,12 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
       - run: cd java && ./gradlew test
+      - run: buildah push dlc docker-archive:dlc-docker.tar:dlc
+      - run: docker load < dlc-docker.tar
+      - run: docker image ls
+      - run: cd java && ./gradlew clean test
+        env: 
+          DISPOSABLES_ENGINE: docker
   release_dlc:
     needs: [build_dlc, rust]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}

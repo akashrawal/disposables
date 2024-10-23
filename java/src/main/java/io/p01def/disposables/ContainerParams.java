@@ -6,6 +6,7 @@ import java.util.Base64;
 import java.util.HashMap;
 
 import io.p01def.disposables.Container.ImageMetadataParseException;
+import io.p01def.disposables.Container.SocketAddrParseException;
 import io.p01def.disposables.Util.ExitStatusException;
 import io.p01def.disposables.protocol.V1SetupMessage;
 import io.p01def.disposables.protocol.V1WaitCondition;
@@ -167,11 +168,13 @@ public class ContainerParams {
 	 * @throws ImageMetadataParseException If the image metadata cannot be parsed.
 	 * @throws ExitStatusException If the container engine exits with a non-zero 
 	 *                             status.
+	 * @throws SocketAddrParseException If a socket address from `podman port`
+	 *                                  cannot be parsed.
 	 * @throws InterruptedException If the thread is interrupted.
 	 */
 	public Container create() 
 			throws IOException, ImageMetadataParseException, ExitStatusException,
-			   InterruptedException {
+			   SocketAddrParseException, InterruptedException {
 		return new Container(this);
 	}
 }

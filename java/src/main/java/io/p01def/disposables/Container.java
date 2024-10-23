@@ -26,15 +26,83 @@ import io.p01def.disposables.protocol.V1Event;
  * A type that represents a running container.
  */
 public class Container implements Closeable {
+	public static class SocketAddrParseException extends Exception {
+		public final String socketaddr;
+		public SocketAddrParseException(String socketaddr, Throwable cause) {
+			super("Cannot parse socket address: " + socketaddr, cause);
+			this.socketaddr = socketaddr;
+		}
+	}
+
+	/**
+	 * A type for representing a mapped container port.
+	 */
 	public static class MappedPort {
+		/// The address of the mapped port.
 		public final InetAddress addr;
+
+		/// The port number of the mapped port.
 		public final int port;
+
+		/**
+		 * Creates a new mapped port object.
+		 *
+		 * @param addr The address of the mapped port.
+		 * @param port The port number of the mapped port.
+		 */
 		public MappedPort(InetAddress addr, int port) {
 			this.addr = addr;
 			this.port = port;
 		}
+
+		/**
+		 * Creates a new mapped port object.
+		 *
+		 * @param socketaddr Mapped port in the format `address:port`.
+		 * @throws SocketAddrParseException If the input is invalid.
+		 */
+		public MappedPort(String socketaddr) throws SocketAddrParseException {
+			Pattern addressAndPortPattern = Pattern.compile("(.+):(\\d+)");
+
+			Matcher m = addressAndPortPattern.matcher(socketaddr);
+			if (!m.matches()) {
+				throw new SocketAddrParseException(socketaddr, null);
+			}
+
+			try {
+				String addrStr = m.group(1);
+				int port = Integer.parseInt(m.group(2));
+				InetAddress addr = InetAddress.getByName(addrStr);
+				this.addr = addr;
+				this.port = port;
+			} catch (Exception e) {
+				throw new SocketAddrParseException(socketaddr, e);
+			}
+		}
+
+		/**
+		 * Returns the address of the mapped port.
+		 *
+		 * @return The address of the mapped port.
+		 */
+		public InetAddress getAddr() {
+			return addr;
+		}
+
+		/**
+		 * String representation of the mapped port.
+		 *
+		 * @return address:port formatted string.
+		 */
+		@Override
+		public String toString() {
+			return addr.getHostAddress() + ":" + port;
+		}
 	}
 
+	/**
+	 * Cannot parse image metadata (as returned by `podman image inspect`).
+	 */
 	public static class ImageMetadataParseException extends Exception {
 		public ImageMetadataParseException(String message, Throwable cause) {
 			super(message, cause);
@@ -46,14 +114,29 @@ public class Container implements Closeable {
 	private final HashMap<Integer, ArrayList<MappedPort>> portMap;
 	private final Socket dlcConn;	
 
+	/**
+	 * Terminates the container.
+	 */
 	@Override
 	public void close() throws IOException {
 		dlcConn.close();
 	}
 
+	/**
+	 * Creates a new container based on the given parameters.
+	 *
+	 * @param params The parameters to use for creating the container.
+	 * @throws IOException If an I/O error occurs.
+	 * @throws InterruptedException If the thread is interrupted.
+	 * @throws ExitStatusException If the container engine exits with a non-zero
+	 *                             exit code.
+	 * @throws ImageMetadataParseException If the image metadata cannot be parsed.
+	 * @throws SocketAddrParseException If a socket address from `podman port`
+	 *                                  cannot be parsed.
+	 */
 	public Container(ContainerParams params)
 	throws IOException, InterruptedException, ExitStatusException,
-			   ImageMetadataParseException {
+			   ImageMetadataParseException, SocketAddrParseException {
 		ObjectMapper mapper = new ObjectMapper();
 
 		this.context = params.context;
@@ -135,29 +218,15 @@ public class Container implements Closeable {
 		
 		//Create port map
 		portMap = new HashMap<>();
-		try {
-			Pattern addressAndPortPattern = Pattern.compile("(.+):(\\d+)");
-			for (int p : ports) {
-				String output = context.podman("port", id, Integer.toString(p));
-				String[] parts = output.split("[ \t\n\r]+");
-				ArrayList<MappedPort> portList = new ArrayList<>();
-				for (String part : parts) {
-					if (part.isEmpty()) continue;
-
-					Matcher m = addressAndPortPattern.matcher(part);
-					if (!m.matches()) {
-						throw new IOException("Cannot parse port mapping: " + part);
-					}
-
-					String addrStr = m.group(1);
-					int port = Integer.parseInt(m.group(2));
-					InetAddress addr = InetAddress.getByName(addrStr);
-					portList.add(new MappedPort(addr, port));
-				}
-				portMap.put(p, portList);
+		for (int p : ports) {
+			String output = context.podman("port", id, Integer.toString(p));
+			String[] parts = output.split("[ \t\n\r]+");
+			ArrayList<MappedPort> portList = new ArrayList<>();
+			for (String part : parts) {
+				if (part.isEmpty()) continue;
+				portList.add(new MappedPort(part));
 			}
-		} catch (Exception e) {
-			throw new IOException("Cannot create port map", e);
+			portMap.put(p, portList);
 		}
 
 		//Connect to DLC port
@@ -178,6 +247,13 @@ public class Container implements Closeable {
 		this.dlcConn = newDlcConn;
 	}
 
+	/**
+	 * Waits for an event from the container.
+	 *
+	 * @return The event that was received.
+	 * @throws IOException If an I/O error occurs.
+	 * @throws InterruptedException If the thread is interrupted.
+	 */
 	public V1Event waitForEvent() throws IOException, InterruptedException {
 		DataInputStream in = new DataInputStream(dlcConn.getInputStream());		
 
@@ -189,11 +265,25 @@ public class Container implements Closeable {
 		return mapper.readValue(data, V1Event.class);
 	}
 
+	/**
+	 * Returns the container's logs.
+	 *
+	 * @return The container's logs.
+	 * @throws IOException If an I/O error occurs.
+	 * @throws InterruptedException If the thread is interrupted.
+	 * @throws ExitStatusException If `podman logs` exits with a non-zero exit code.
+	 */
 	public String logs() throws IOException, InterruptedException,
 		   ExitStatusException {
-		return context.podman("logs", "-f", id);
+		return context.podman("logs", id);
 	}
 
+	/**
+	 * Returns the port mapping for the given port.
+	 *
+	 * @param port The port to get the mapping for.
+	 * @return The port mapping for the given port.
+	 */
 	public List<MappedPort> port(int port) {
 		return portMap.get(port);
 	}

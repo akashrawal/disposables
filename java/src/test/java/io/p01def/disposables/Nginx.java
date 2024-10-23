@@ -31,8 +31,7 @@ public class Nginx {
 		boolean success = false;
 		for (MappedPort p : c.port(80)) {
 			try {
-				URL url = new URL("http://" + p.addr.getHostName() + ":" + p.port
-						+ "/custom_file.html");
+				URL url = new URL("http://" + p + "/custom_file.html");
 				System.out.println("Connecting to " + url);
 				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 				conn.setRequestMethod("GET");

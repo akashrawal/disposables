@@ -55,7 +55,7 @@ jreleaser {
 		links {
 			homepage = 'https://github.com/akashrawal/disposables'
 		}
-		inceptionYear = 2024
+		inceptionYear = '2024'
 	}
 	signing {
 		active = 'ALWAYS'

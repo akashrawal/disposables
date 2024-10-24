@@ -94,7 +94,7 @@ jobs:
       - run: cargo publish -p disposables_protocol
       - run: cargo publish -p disposables
   release_java:
-    needs: [build_dlc]
+    needs: [java]
     env: 
       TAG: ${{ github.ref_name }}
       JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}

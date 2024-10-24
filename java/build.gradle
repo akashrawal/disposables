@@ -1,13 +1,14 @@
 
 plugins {
     id 'java-library'
+	id 'org.jreleaser' version '1.14.0'
 }
 
 repositories {
     mavenCentral()
 }
 
-group 'io.p01def.disposables'
+group 'io.01def'
 version '0.1.8'
 
 dependencies {
@@ -46,3 +47,31 @@ tasks.named('processResources') {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+jreleaser {
+	project {
+		authors = ['Akash Rawal']
+		license = 'GPL-3.0'
+		links {
+			homepage = 'https://github.com/akashrawal/disposables'
+		}
+		inceptionYear = 2024
+	}
+	signing {
+		active = 'ALWAYS'
+		armored = true
+	}
+	deploy {
+		maven {
+			mavenCentral {
+				sonatype {
+					active = 'ALWAYS'
+					url = 'https://central.sonatype.com/api/v1/publisher'
+					stagingRepository('target/staging-deploy')
+				}
+			}
+		}
+	}
+}
+
+

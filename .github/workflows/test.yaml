@@ -93,3 +93,22 @@ jobs:
       - uses: actions/checkout@v4
       - run: cargo publish -p disposables_protocol
       - run: cargo publish -p disposables
+  release_java:
+    needs: [build_dlc]
+    env: 
+      TAG: ${{ github.ref_name }}
+      JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+      JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+      - run: cd java && ./gradlew publish

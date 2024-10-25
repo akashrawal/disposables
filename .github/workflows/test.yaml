@@ -62,7 +62,7 @@ jobs:
         env: 
           DISPOSABLES_ENGINE: docker
   release_dlc:
-    needs: [build_dlc, rust]
+    needs: [build_dlc, rust, java]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}
     env: 
       REGISTRY: ${{ vars.DLC_REGISTRY }}

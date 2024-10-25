@@ -52,6 +52,11 @@ tasks.named('test') {
 }
 
 jreleaser {
+	release {
+		github {
+			enabled = false
+		}
+	}
 	project {
 		authors = ['Akash Rawal']
 		license = 'GPL-3.0'

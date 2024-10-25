@@ -90,6 +90,15 @@ publishing {
 }
 
 jreleaser {
+	project {
+		authors = ['Akash Rawal']
+		license = 'GPL-3.0'
+		links {
+			homepage = 'https://github.com/akashrawal/disposables'
+		}
+		inceptionYear = '2024'
+		description = 'Run your test dependencies in disposable containers.'
+	}
 	signing {
 		active = 'ALWAYS'
 		armored = true

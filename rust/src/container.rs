@@ -105,7 +105,7 @@ impl ContainerParams {
      *
      * If `interval_msec` is non-zero then the command is run every
      * `interval_msec` milliseconds. If it is zero then the command is only
-     * executed once and then the command is supposed to stay running till
+     * executed once and then the command is supposed to block till
      * the container is ready.
      */
     pub fn wait_for_cmd(&mut self, args: impl Into<Args>,
@@ -257,8 +257,6 @@ impl ContainerParams {
             .map(|x| x.get())
             .unwrap_or(image_meta.config.cmd.as_slice());
 
-        let dlc_path = format!("{}/dlc", ctx.dlc_install_dir());
-
         //Setup message
         let setup_msg = serde_json::to_string(&self.setup_msg)
             .expect("Error serializing setup message");
@@ -277,7 +275,7 @@ impl ContainerParams {
         for p in &ports {
             args.add("-p").add(p.to_string());
         }
-        args.add(format!("--entrypoint={dlc_path}"))
+        args.add(format!("--entrypoint={}/dlc", ctx.dlc_install_dir()))
             .add(self.image.clone())
             .add("run")
             .extend(img_entrypoint)

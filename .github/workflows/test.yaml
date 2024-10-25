@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: docker/setup-qemu-action@v3
       - run: buildah build -t dlc .
       - run: buildah push dlc oci-archive:dlc.tar:dlc
@@ -20,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image
@@ -37,6 +39,28 @@ jobs:
           RUST_LOG: test_suite=debug
           DISPOSABLES_ENGINE: docker
       - run: cargo test -p disposables
+  java:
+    needs: [build_dlc]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+      - run: cd java && ./gradlew test
+      - run: buildah push dlc docker-archive:dlc-docker.tar:dlc
+      - run: docker load < dlc-docker.tar
+      - run: docker image ls
+      - run: cd java && ./gradlew clean test
+        env: 
+          DISPOSABLES_ENGINE: docker
   release_dlc:
     needs: [build_dlc, rust]
     if: ${{ startsWith(github.ref, 'refs/tags/r') }}
@@ -48,8 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: docker/setup-qemu-action@v3
-      - run: ./dev/do_release.sh check "${TAG#r}"
       - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
       - run: buildah manifest create dlc
       - run: buildah build --arch amd64 --manifest dlc .
@@ -70,5 +94,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - run: cargo publish -p disposables_protocol
       - run: cargo publish -p disposables
+  release_java:
+    needs: [release_dlc]
+    if: ${{ startsWith(github.ref, 'refs/tags/r') }}
+    env: 
+      TAG: ${{ github.ref_name }}
+      JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+      JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+      JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
+      JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+      JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+      JRELEASER_GITHUB_TOKEN: "no_token"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: dlc-image
+      - run: buildah pull oci-archive:dlc.tar
+      - run: buildah images
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+      - run: cd java && ./gradlew publish
+      - run: cd java && ./gradlew jreleaserDeploy  --git-root-search

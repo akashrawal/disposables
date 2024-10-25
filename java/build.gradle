@@ -1,0 +1,119 @@
+
+plugins {
+    id 'java-library'
+	id 'maven-publish'
+	id 'org.jreleaser' version '1.14.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+group 'io.01def'
+version '99.99.99'
+
+dependencies {
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
+
+    testImplementation libs.junit.jupiter
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+
+tasks.register('makeProjectInfo') {
+	inputs.property('version', project.version)
+
+	def resourcesDir = new File(sourceSets.main.output.resourcesDir,
+		'io/p01def/disposables');
+	def outputFile = new File(resourcesDir, "project-info.properties");
+	outputs.file(outputFile);
+
+	doLast {
+        resourcesDir.mkdirs();
+        outputFile.text = "version=$project.version\n";
+    }
+}
+
+tasks.named('processResources') {
+	dependsOn tasks.named('makeProjectInfo')
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+	withSourcesJar()
+	withJavadocJar()
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            pom {
+                name = 'Disposables'
+                description = 'Run your test dependencies in disposable containers.'
+                url = 'https://github.com/akashrawal/disposables'
+                inceptionYear = '2024'
+                licenses {
+                    license {
+                        name = 'GPL-3.0'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'akashrawal'
+                        name = 'Akash Rawal'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/akashrawal/disposables.git'
+                    developerConnection = 'scm:git:git@github.com:akashrawal/disposables.git'
+                    url = 'http://github.com/akashrawal/disposables'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging')
+        }
+    }
+}
+
+jreleaser {
+	project {
+		authors = ['Akash Rawal']
+		license = 'GPL-3.0'
+		links {
+			homepage = 'https://github.com/akashrawal/disposables'
+		}
+		inceptionYear = '2024'
+		description = 'Run your test dependencies in disposable containers.'
+	}
+	signing {
+		active = 'ALWAYS'
+		armored = true
+	}
+	deploy {
+		maven {
+			mavenCentral {
+				sonatype {
+					active = 'ALWAYS'
+					url = 'https://central.sonatype.com/api/v1/publisher'
+					stagingRepository('build/staging')
+				}
+			}
+		}
+	}
+}
+
+

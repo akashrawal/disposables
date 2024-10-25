@@ -307,8 +307,24 @@ async fn async_main() {
         
         if !std::fs::exists(target.join("dlc"))
             .expect("Unable to check if DLC binary exists") {
-            std::fs::copy(current_exe, target.join("dlc"))
-                .expect("Unable to install executable");
+            let atomicwriteid: u16 = rand::random();
+            let tempfile = format!("dlc-{atomicwriteid}");
+            std::fs::copy(current_exe, target.join(&tempfile))
+                .expect("Unable to install executable (write)");
+            match std::fs::rename(target.join(&tempfile), target.join("dlc")) {
+                Ok(_) => {},
+                Err(e) => {
+                    match e.kind() {
+                        ErrorKind::AlreadyExists => {
+                            std::fs::remove_file(target.join(&tempfile))
+                                .expect("Unable to remove temporary file");
+                        }, 
+                        _ => {
+                            panic!("Unable to install executable (rename): {e}")
+                        }
+                    }
+                },
+            }
         }
     } else if cmd == "run" {
         let arg0 = args.next().expect("Entrypoint is missing");

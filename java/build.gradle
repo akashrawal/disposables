@@ -13,6 +13,7 @@ group 'io.01def'
 version '99.99.99'
 
 dependencies {
+	api 'com.fasterxml.jackson.core:jackson-annotations:2.18.0'
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'
 
     testImplementation libs.junit.jupiter

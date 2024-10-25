@@ -10,7 +10,7 @@ repositories {
 }
 
 group 'io.01def'
-version '0.1.8'
+version '99.99.99'
 
 dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.0'

@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: docker/setup-qemu-action@v3
       - run: buildah build -t dlc .
       - run: buildah push dlc oci-archive:dlc.tar:dlc
@@ -20,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image
@@ -42,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image
@@ -69,8 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: docker/setup-qemu-action@v3
-      - run: ./dev/do_release.sh check "${TAG#r}"
       - run: buildah login -u akashrawal --password-stdin $REGISTRY <<< "$TOKEN"
       - run: buildah manifest create dlc
       - run: buildah build --arch amd64 --manifest dlc .
@@ -91,10 +94,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - run: cargo publish -p disposables_protocol
       - run: cargo publish -p disposables
   release_java:
-    needs: [java]
+    needs: [release_dlc]
+    if: ${{ startsWith(github.ref, 'refs/tags/r') }}
     env: 
       TAG: ${{ github.ref_name }}
       JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
@@ -106,6 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: ./dev/set_version.sh
       - uses: actions/download-artifact@v4
         with:
           name: dlc-image

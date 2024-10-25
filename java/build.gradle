@@ -51,6 +51,44 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            pom {
+                name = 'Disposables'
+                description = 'Run your test dependencies in disposable containers.'
+                url = 'https://github.com/akashrawal/disposables'
+                inceptionYear = '2024'
+                licenses {
+                    license {
+                        name = 'GPL-3.0'
+                        url = 'https://www.gnu.org/licenses/gpl-3.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'akashrawal'
+                        name = 'Akash Rawal'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/akashrawal/disposables.git'
+                    developerConnection = 'scm:git:git@github.com:akashrawal/disposables.git'
+                    url = 'http://github.com/akashrawal/disposables'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging')
+        }
+    }
+}
+
 jreleaser {
 	project {
 		authors = ['Akash Rawal']
@@ -71,7 +109,7 @@ jreleaser {
 				sonatype {
 					active = 'ALWAYS'
 					url = 'https://central.sonatype.com/api/v1/publisher'
-					stagingRepository('target/staging-deploy')
+					stagingRepository('build/staging')
 				}
 			}
 		}

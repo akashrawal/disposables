@@ -115,4 +115,5 @@ jobs:
         with:
           java-version: '8'
           distribution: 'temurin'
+      - run: cd java && ./gradlew publish
       - run: cd java && ./gradlew jreleaserDeploy  --git-root-search

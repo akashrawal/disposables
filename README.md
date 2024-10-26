@@ -1,4 +1,4 @@
-# Disposables
+# Disposables [![Test](https://github.com/akashrawal/disposables/actions/workflows/test.yaml/badge.svg)](https://github.com/akashrawal/disposables/actions/workflows/test.yaml)
 
 Disposables is a library that runs your test dependencies in containers.
 Once your tests finish running, the containers are automatically cleaned up.
@@ -10,6 +10,7 @@ Disposables needs Podman or Docker CLI to work.
 ## Rust
 
 Use `disposables` crate.
+
 [![crates.io](https://img.shields.io/crates/v/disposables)](https://crates.io/crates/disposables)
 [![Documentation](https://docs.rs/disposables/badge.svg)](https://docs.rs/disposables)
 
@@ -45,6 +46,7 @@ log::info!("Received response {response}"); //< <html>Custom file</html>
 ## Java
 
 Use `io.01def:disposables` library. 
+
 [![Maven Central Version](https://img.shields.io/maven-central/v/io.01def/disposables)](https://central.sonatype.com/artifact/io.01def/disposables)
 [![Javadoc](https://javadoc.io/badge2/io.01def/disposables/javadoc.svg)](https://javadoc.io/doc/io.01def/disposables)
 

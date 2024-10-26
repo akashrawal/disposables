@@ -3,7 +3,6 @@ package io.p01def.disposables;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,11 +14,12 @@ public class Nginx {
 
 	@Test
 	public void normalServer() throws Exception {
+		//Use 'docker.io/nginx:alpine' image
 		Container c = new ContainerParams("docker.io/nginx:alpine")
-			.port(80)
-			.waitForPort(80)
+			.port(80) //< Forward port 80
+			.waitForPort(80) //< When port 80 is connectable, the container is ready
 			.file("/usr/share/nginx/html/custom_file.html",
-				"<html></html>".getBytes())
+				"<html></html>".getBytes()) //< Add this file
 			.create();
 
 		V1Event event = c.waitForEvent();

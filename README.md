@@ -7,6 +7,10 @@ access, and works well with user namespaces.
 
 Disposables needs Podman or Docker CLI to work.
 
+Disposables is designed with Podman in mind. Unlike Testcontainers,
+there is no need to start Podman service, setup environment variables, 
+or deal with SELinux, or 'disable ryuk', it just works.
+
 ## Rust
 
 Use `disposables` crate.
@@ -41,6 +45,8 @@ let mut response_buf = Vec::<u8>::new();
 conn.read_to_end(&mut response_buf).unwrap();
 let response = String::from_utf8(response_buf).unwrap();
 log::info!("Received response {response}"); //< <html>Custom file</html>
+
+//< Container automatically deleted when it goes out of scope.
 ```
 
 ## Java

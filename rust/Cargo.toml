@@ -4,7 +4,7 @@ version = "99.99.99"
 edition = "2021"
 license = "GPL-3.0"
 description = '''
-Run your test dependencies in disposable containers."
+Run your test dependencies in disposable containers.
 '''
 homepage = "https://github.com/akashrawal/disposables"
 repository = "https://github.com/akashrawal/disposables"

@@ -353,7 +353,7 @@ impl Container {
      * let mut container = ContainerParams::new("docker.io/postgres:16-alpine")
      *     .env("POSTGRES_HOST_AUTH_METHOD", "trust")
      *     .port(5432)
-     *     .wait_for_cmd(["pg_isready"], 500)
+     *     .wait_for_cmd(["pg_isready", "-h", "127.0.0.1"], 500)
      *     .create().unwrap();
      *
      * assert!(matches!(container.wait().unwrap(), V1Event::Ready),

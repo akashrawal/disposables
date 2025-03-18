@@ -29,7 +29,7 @@ async fn normal_server() {
     let mut container = ContainerParams::new("docker.io/postgres:alpine")
         .env("POSTGRES_PASSWORD", "postgres")
         .port(5432)
-        .wait_for_cmd(["pg_isready"], 500)
+        .wait_for_cmd(["pg_isready", "-h", "127.0.0.1"], 500)
         .create().unwrap();
 
     assert!(matches!(container.wait(), Ok(V1Event::Ready)),
